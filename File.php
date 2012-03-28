@@ -1,40 +1,20 @@
 <?php
 /**
- * Zend Framework
+ * Cm_Cache_Backend_File
  *
- * LICENSE
+ * This cache backend works by indexing tags in files so that tag operations
+ * do not require a full scan of every cache file. The ids are written to the
+ * tag files in append-only mode and only when files exceed 4k and only randomly
+ * are the tag files compacted to prevent endless growth in edge cases.
  *
- * This source file is subject to the new BSD license that is bundled
- * with this package in the file LICENSE.txt.
- * It is also available through the world-wide-web at this URL:
- * http://framework.zend.com/license/new-bsd
- * If you did not receive a copy of the license and are unable to
- * obtain it through the world-wide-web, please send an email
- * to license@zend.com so we can send you a copy immediately.
+ * The stock Zend_Cache_Backend_File backend is anything but usable with any system
+ * that uses tagging (such as Magento). This backend is nearly as fast with save()
+ * and load() operations, but literally several orders of magnitude faster for any tag-related
+ * operations. Benchmark tool here: https://github.com/colinmollenhour/magento-cache-benchmark
  *
- * @category   Zend
- * @package    Zend_Cache
- * @subpackage Zend_Cache_Backend
- * @copyright  Copyright (c) 2005-2009 Zend Technologies USA Inc. (http://www.zend.com)
- * @license    http://framework.zend.com/license/new-bsd     New BSD License
- * @version    $Id: File.php 17868 2009-08-28 09:46:30Z yoshida@zend.co.jp $
- */
-
-/**
- * @see Zend_Cache_Backend_Interface
- */
-#require_once 'Zend/Cache/Backend/ExtendedInterface.php';
-
-/**
- * @see Zend_Cache_Backend
- */
-#require_once 'Zend/Cache/Backend.php';
-
-
-/**
- * @package    Zend_Cache
- * @subpackage Zend_Cache_Backend
- * @copyright  Copyright (c) 2005-2009 Zend Technologies USA Inc. (http://www.zend.com)
+ * Thanks to Vinai Kopp for the inspiring this backend with your symlink rendition!
+ *
+ * @copyright  Copyright (c) 2012 Colin Mollenhour (http://colin.mollenhour.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  */
 class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
@@ -90,7 +70,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
     protected $_options = array(
         'cache_dir' => null,
         'file_locking' => true,
-        'read_control' => true,
+        'read_control' => false,
         'read_control_type' => 'crc32',
         'hashed_directory_level' => 1,
         'hashed_directory_umask' => 0770,
@@ -99,12 +79,46 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         'metadatas_array_max_size' => 100
     );
 
+    /**
+     * @param array $options
+     */
     public function __construct(array $options = array())
     {
-        if ( ! isset($options['cache_dir']) || ! strlen($options['cache_dir'])) {
+        if ( ! isset($options['cache_dir']) || ! strlen($options['cache_dir']) && class_exists('Mage', false)) {
             $options['cache_dir'] = Mage::getBaseDir('cache');
         }
         parent::__construct($options);
+    }
+
+    /**
+     * Test if a cache is available for the given id and (if yes) return it (false else)
+     *
+     * @param string $id cache id
+     * @param boolean $doNotTestCacheValidity if set to true, the cache validity won't be tested
+     * @return string|false cached datas
+     */
+    public function load($id, $doNotTestCacheValidity = false)
+    {
+        $metadatas = $this->_getMetadatas($id);
+        if ( ! $metadatas) {
+            return false;
+        }
+        if ( ! $doNotTestCacheValidity && (time() > $metadatas['expire'])) {
+            return false;
+        }
+
+        $data = $this->_fileGetContents($this->_file($id));
+        if ($this->_options['read_control']) {
+            $hashData = $this->_hash($data, $this->_options['read_control_type']);
+            $hashControl = $metadatas['hash'];
+            if ($hashData != $hashControl) {
+                // Problem detected by the read control !
+                $this->_log('Zend_Cache_Backend_File::load() / read_control : stored hash and computed hash do not match');
+                $this->remove($id);
+                return false;
+            }
+        }
+        return $data;
     }
 
     /**
@@ -250,6 +264,33 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
     }
 
     /**
+     * Get a metadatas record
+     *
+     * @param  string $id  Cache id
+     * @return array|false Associative array of metadatas
+     */
+    protected function _getMetadatas($id)
+    {
+        return $this->_loadMetadatas($id);
+    }
+
+    /**
+     * Set a metadatas record
+     *
+     * @param  string $id        Cache id
+     * @param  array  $metadatas Associative array of metadatas
+     * @param  boolean $save     optional pass false to disable saving to file
+     * @return boolean True if no problem
+     */
+    protected function _setMetadatas($id, $metadatas, $save = true)
+    {
+        if ($save) {
+            return $this->_saveMetadatas($id, $metadatas);
+        }
+        return true;
+    }
+
+      /**
      * Save metadatas to disk
      *
      * @param  string $id        Cache id
@@ -419,6 +460,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         } else if(is_file($file)) {
             return $this->_remove($file);
         }
+        return true;
     }
 
     /**
@@ -434,6 +476,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         } else if(is_file($file)) {
             return $this->_remove($file);
         }
+        return true;
     }
 
     /**

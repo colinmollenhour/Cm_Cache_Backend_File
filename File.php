@@ -122,7 +122,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
     public function save($data, $id, $tags = array(), $specificLifetime = false)
     {
         $res = parent::save($data, $id, $tags, $specificLifetime);
-        $res = $res && $this->_saveIdTags($id, $tags);
+        $res = $res && $this->_appendIdTags($id, $tags);
         return $res;
     }
 
@@ -382,7 +382,15 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      */
     protected function _tagPath()
     {
-        return $this->_options['cache_dir'] . DIRECTORY_SEPARATOR . 'tags' . DIRECTORY_SEPARATOR;
+        $path = $this->_options['cache_dir'] . DIRECTORY_SEPARATOR . 'tags' . DIRECTORY_SEPARATOR;
+        if ( ! $this->isTagDir) {
+            if ( ! is_dir($path)) {
+                @mkdir($path, $this->_options['hashed_directory_umask']);
+                @chmod($path, $this->_options['hashed_directory_umask']); // see #ZF-320 (this line is required in some configurations)
+            }
+            $this->isTagDir = true;
+        }
+        return $path;
     }
 
     /**
@@ -393,7 +401,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
     {
         $file = $this->_tagFile($tag);
         if($ids = $this->_fileGetContents($file)) {
-            return explode("\n", $ids);
+            return array_unique((array)explode("\n", rtrim($ids,"\n")));
         }
         return array();
     }
@@ -405,17 +413,24 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      */
     protected function _saveTagIds($tag, $ids)
     {
-        $path = $this->_tagPath();
-        if ( ! $this->isTagDir) {
-            if ( ! is_dir($path)) {
-                @mkdir($path, $this->_options['hashed_directory_umask']);
-                @chmod($path, $this->_options['hashed_directory_umask']); // see #ZF-320 (this line is required in some configurations)
-            }
-            $this->isTagDir = true;
-        }
         $file = $this->_tagFile($tag);
         if ($ids) {
-            return $this->_filePutContents($file, implode("\n", $ids));
+            return $this->_filePutContents($file, implode("\n", array_unique($ids))."\n");
+        } else if(is_file($file)) {
+            return $this->_remove($file);
+        }
+    }
+
+    /**
+     * @param string $tag
+     * @param array $ids
+     * @return bool
+     */
+    protected function _appendTagIds($tag, $ids)
+    {
+        $file = $this->_tagFile($tag);
+        if ($ids) {
+            return $this->_fileAppendContents($file, implode("\n", $ids)."\n");
         } else if(is_file($file)) {
             return $this->_remove($file);
         }
@@ -444,6 +459,20 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      * @param array $tags
      * @return bool
      */
+    protected function _appendIdTags($id, $tags)
+    {
+        $result = true;
+        foreach($tags as $tag) {
+            $result = $this->_appendTagIds($tag, array($id)) && $result;
+        }
+        return $result;
+    }
+
+    /**
+     * @param string $id
+     * @param array $tags
+     * @return bool
+     */
     protected function _removeIdTags($id, $tags)
     {
         $result = true;
@@ -453,5 +482,28 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         }
         return $result;
     }
+
+  /**
+   * Put the given string into the given file
+   *
+   * @param  string $file   File complete path
+   * @param  string $string String to put in file
+   * @return boolean true if no problem
+   */
+  protected function _fileAppendContents($file, $string)
+  {
+      $result = false;
+      $f = @fopen($file, 'ab');
+      if ($f) {
+          if ($this->_options['file_locking']) @flock($f, LOCK_EX);
+          $tmp = @fwrite($f, $string);
+          if (!($tmp === FALSE)) {
+              $result = true;
+          }
+          @fclose($f);
+      }
+      @chmod($file, $this->_options['cache_file_umask']);
+      return $result;
+  }
 
 }

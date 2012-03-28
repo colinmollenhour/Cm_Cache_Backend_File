@@ -122,7 +122,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
     public function save($data, $id, $tags = array(), $specificLifetime = false)
     {
         $res = parent::save($data, $id, $tags, $specificLifetime);
-        $res = $res && $this->_appendIdTags($id, $tags);
+        $res = $res && $this->_writeIdTags($id, $tags);
         return $res;
     }
 
@@ -446,9 +446,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         $result = true;
         foreach($tags as $tag) {
             $ids = $this->_getTagIds($tag);
-            if ( ! in_array($id, $ids)) {
-                $ids[] = $id;
-            }
+            $ids[] = $id;
             $result = $this->_saveTagIds($tag, $ids) && $result;
         }
         return $result;
@@ -459,11 +457,16 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      * @param array $tags
      * @return bool
      */
-    protected function _appendIdTags($id, $tags)
+    protected function _writeIdTags($id, $tags)
     {
         $result = true;
         foreach($tags as $tag) {
-            $result = $this->_appendTagIds($tag, array($id)) && $result;
+            $file = $this->_tagFile($tag);
+            if (rand(1,100) == 1 && @filesize($file) > 4096) {
+                $result = $this->_saveIdTags($id, array($tag));
+            } else {
+                $result = $this->_appendTagIds($tag, array($id)) && $result;
+            }
         }
         return $result;
     }

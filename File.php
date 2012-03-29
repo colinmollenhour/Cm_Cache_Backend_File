@@ -2,17 +2,19 @@
 /**
  * Cm_Cache_Backend_File
  *
+ * The stock Zend_Cache_Backend_File backend has extremely poor performance for
+ * cleaning by tags making it become unusable as the number of cached items
+ * increases. This backend make many changes resulting in a huge performance boost,
+ * especially for tag cleaning.
+ *
  * This cache backend works by indexing tags in files so that tag operations
  * do not require a full scan of every cache file. The ids are written to the
  * tag files in append-only mode and only when files exceed 4k and only randomly
  * are the tag files compacted to prevent endless growth in edge cases.
  *
- * The stock Zend_Cache_Backend_File backend has extremely poor performance for 
- * cleaning by tags making it become unusable as the number of cached items
- * increases. This backend sacrifices a little in save() performance for huge
- * gains in tag-based operations and as a result of the reduced disk utilization
- * should improve read performance as well in a high-contention scenario. Also,
- * the original hashed directory structure had very poor distribution due to
+ * The metadata and the cache record are stored in the same file rather than separate
+ * files resulting in fewer inodes and fewer file stat/read/write/lock/unlink operations.
+ * Also, the original hashed directory structure had very poor distribution due to
  * the adler32 hashing algorithm and prefixes. The multi-level nested directories
  * have been dropped in favor of single-level nesting made from multiple characters.
  *
@@ -110,15 +112,16 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      */
     public function load($id, $doNotTestCacheValidity = false)
     {
-        $metadatas = $this->_getMetadatas($id);
-        if ( ! $metadatas) {
+        $file = $this->_file($id);
+        $cache = $this->_getCache($file, true);
+        if ( ! $cache) {
             return false;
         }
+        list($metadatas, $data) = $cache;
         if ( ! $doNotTestCacheValidity && (time() > $metadatas['expire'])) {
+            // ?? $this->remove($id);
             return false;
         }
-
-        $data = $this->_fileGetContents($this->_file($id));
         if ($this->_options['read_control']) {
             $hashData = $this->_hash($data, $this->_options['read_control_type']);
             $hashControl = $metadatas['hash'];
@@ -146,7 +149,29 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      */
     public function save($data, $id, $tags = array(), $specificLifetime = false)
     {
-        $res = parent::save($data, $id, $tags, $specificLifetime);
+        $file = $this->_file($id);
+        $path = $this->_path($id);
+        if ($this->_options['hashed_directory_level'] > 0) {
+            if (!is_writable($path)) {
+                // maybe, we just have to build the directory structure
+                $this->_recursiveMkdirAndChmod($id);
+            }
+            if (!is_writable($path)) {
+                return false;
+            }
+        }
+        if ($this->_options['read_control']) {
+            $hash = $this->_hash($data, $this->_options['read_control_type']);
+        } else {
+            $hash = '';
+        }
+        $metadatas = array(
+            'hash' => $hash,
+            'mtime' => time(),
+            'expire' => $this->_expireTime($this->getLifetime($specificLifetime)),
+            'tags' => implode(',', $tags),
+        );
+        $res = $this->_filePutContents($file, serialize($metadatas)."\n".$data);
         $res = $res && $this->_updateIdsTags(array($id), $tags, 'merge');
         return $res;
     }
@@ -160,12 +185,11 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
     public function remove($id)
     {
         $file = $this->_file($id);
-        $metadatas = $this->getMetadatas($id);
+        $metadatas = $this->_getCache($file, false);
         if ($metadatas) {
             $boolRemove   = $this->_remove($file);
-            $boolMetadata = $this->_delMetadatas($id);
-            $boolTags     = $this->_updateIdsTags(array($id), $metadatas['tags'], 'diff');
-            return $boolMetadata && $boolRemove && $boolTags;
+            $boolTags     = $this->_updateIdsTags(array($id), explode(',', $metadatas['tags']), 'diff');
+            return $boolRemove && $boolTags;
         }
         return true;
     }
@@ -192,8 +216,9 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         // We use this protected method to hide the recursive stuff
         clearstatcache();
         switch($mode) {
-            case 'old':
-                return $this->_clean($this->_options['cache_dir'], $mode, $tags);
+            case Zend_Cache::CLEANING_MODE_ALL:
+            case Zend_Cache::CLEANING_MODE_OLD:
+                return $this->_clean($this->_options['cache_dir'], $mode);
             default:
                 return $this->_cleanNew($mode, $tags);
         }
@@ -267,22 +292,66 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      */
     public function getMetadatas($id)
     {
-        $metadatas = parent::getMetadatas($id);
-        if ($metadatas && is_string($metadatas['tags'])) {
-            $metadatas['tags'] = explode("\n",$metadatas['tags']);
+        $metadatas = $this->_getCache($this->_file($id), false);
+        if ($metadatas) {
+            $metadatas['tags'] = explode(',' ,$metadatas['tags']);
         }
         return $metadatas;
     }
 
     /**
-     * Get a metadatas record
+     * Give (if possible) an extra lifetime to the given cache id
      *
-     * @param  string $id  Cache id
-     * @return array|bool Associative array of metadatas
+     * @param string $id cache id
+     * @param int $extraLifetime
+     * @return boolean true if ok
      */
-    protected function _getMetadatas($id)
+    public function touch($id, $extraLifetime)
     {
-        return $this->_loadMetadatas($id);
+        $file = $this->_file($id);
+        $cache = $this->_getCache($file, true);
+        if (!$cache) {
+            return false;
+        }
+        list($metadatas, $data) = $cache;
+        if (time() > $metadatas['expire']) {
+            return false;
+        }
+        $newMetadatas = array(
+            'hash' => $metadatas['hash'],
+            'mtime' => time(),
+            'expire' => $metadatas['expire'] + $extraLifetime,
+            'tags' => $metadatas['tags']
+        );
+        return $this->_filePutContents($file, serialize($newMetadatas)."\n".$data);
+    }
+
+    /**
+     * Get a metadatas record and optionally the data as well
+     *
+     * @param  string $file  Cache file
+     * @param  bool $withData
+     * @return array|bool
+     */
+    protected function _getCache($file, $withData)
+    {
+        if (!is_file($file) || ! ($fd = @fopen($file, 'rb'))) {
+            return false;
+        }
+        if ($this->_options['file_locking']) flock($fd, LOCK_SH);
+        $metadatas = fgets($fd);
+        if ( ! $metadatas) {
+            return false;
+        }
+        if ($withData) {
+            $data = stream_get_contents($fd);
+        }
+        fclose($fd);
+        $metadatas = @unserialize(rtrim($metadatas,"\n"));
+        if ($withData) {
+            return array($metadatas, $data);
+        }
+        return $metadatas;
     }
 
     /**
@@ -295,9 +364,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      */
     protected function _setMetadatas($id, $metadatas, $save = true)
     {
-        if ($save) {
-            return $this->_saveMetadatas($id, $metadatas);
-        }
+        // TODO - implement for unit tests ___expire method
         return true;
     }
 
@@ -328,18 +395,79 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
     }
 
     /**
-     * Save metadatas to disk
+     * Clean some cache records (protected method used for recursive stuff)
      *
-     * @param  string $id        Cache id
-     * @param  array  $metadatas Associative array
+     * Available modes are :
+     * Zend_Cache::CLEANING_MODE_ALL (default)    => remove all cache entries ($tags is not used)
+     * Zend_Cache::CLEANING_MODE_OLD              => remove too old cache entries ($tags is not used)
+     * Zend_Cache::CLEANING_MODE_MATCHING_TAG     => remove cache entries matching all given tags
+     *                                               ($tags can be an array of strings or a single string)
+     * Zend_Cache::CLEANING_MODE_NOT_MATCHING_TAG => remove cache entries not {matching one of the given tags}
+     *                                               ($tags can be an array of strings or a single string)
+     * Zend_Cache::CLEANING_MODE_MATCHING_ANY_TAG => remove cache entries matching any given tags
+     *                                               ($tags can be an array of strings or a single string)
+     *
+     * @param  string $dir  Directory to clean
+     * @param  string $mode Clean mode
+     * @throws Zend_Cache_Exception
      * @return boolean True if no problem
      */
-    protected function _saveMetadatas($id, $metadatas)
+    protected function _clean($dir, $mode = Zend_Cache::CLEANING_MODE_ALL)
     {
-        if ($metadatas['tags']) { // Rarely needs to be deserialized so optimize deserialization
-            $metadatas['tags'] = implode("\n",$metadatas['tags']);
+        if (!is_dir($dir)) {
+            return false;
         }
-        return parent::_saveMetadatas($id, $metadatas);
+        $result = true;
+        $glob = @glob($dir . $this->_options['file_name_prefix'] . '--*');
+        if ($glob === false) {
+            return true;
+        }
+        foreach ($glob as $file)  {
+            if (is_file($file)) {
+                switch ($mode) {
+                    case Zend_Cache::CLEANING_MODE_ALL:
+                        $result = @unlink($file) && $result;
+                        continue;
+                }
+
+                $id = $this->_fileNameToId(basename($file));
+                $_file = $this->_file($id);
+                if ($file != $_file) {
+                    @unlink($file);
+                    continue;
+                }
+                $metadatas = $this->_getCache($file, false);
+                if ( ! $metadatas) {
+                    @unlink($file);
+                    continue;
+                }
+                switch ($mode) {
+                    case Zend_Cache::CLEANING_MODE_OLD:
+                        if (time() > $metadatas['expire']) {
+                            $result = $this->_remove($file) && $result;
+                            $result = $this->_updateIdsTags(array($id), explode(',', $metadatas['tags']), 'diff') && $result;
+                        }
+                        continue;
+                    default:
+                        Zend_Cache::throwException('Invalid mode for clean() method');
+                        break;
+                }
+            }
+            if ((is_dir($file)) and ($this->_options['hashed_directory_level']>0)) {
+                // Recursive call
+                $result = $this->_clean($file . DIRECTORY_SEPARATOR, $mode) && $result;
+                if ($mode == 'all') {
+                    // if mode=='all', we try to drop the structure too
+                    @rmdir($file);
+                }
+            }
+        }
+        if ($mode == 'all') {
+            foreach (glob($this->_tagFile('*')) as $tagFile) {
+                @unlink($tagFile);
+            }
+        }
+        return $result;
     }
 
     /**
@@ -363,22 +491,15 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
     protected function _cleanNew($mode = Zend_Cache::CLEANING_MODE_ALL, $tags = array())
     {
         $result = true;
-        if ($mode == Zend_Cache::CLEANING_MODE_ALL) {
-            $ids = $this->getIds();
-            $tags = $this->getTags();
-        }
-        else {
-            $ids = $this->_getIdsByTags($mode, $tags);
-        }
+        $ids = $this->_getIdsByTags($mode, $tags);
         foreach ($ids as $id) {
             $idFile = $this->_file($id);
             if (is_file($idFile)) {
-                $result = $result && $this->_remove($idFile) && $this->_delMetadatas($id);
+                $result = $result && $this->_remove($idFile);
             }
         }
         switch($mode)
         {
-            case Zend_Cache::CLEANING_MODE_ALL:
             case Zend_Cache::CLEANING_MODE_MATCHING_ANY_TAG:
                 foreach ($tags as $tag) {
                     $tagFile = $this->_tagFile($tag);

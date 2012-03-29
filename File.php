@@ -7,16 +7,21 @@
  * tag files in append-only mode and only when files exceed 4k and only randomly
  * are the tag files compacted to prevent endless growth in edge cases.
  *
- * The stock Zend_Cache_Backend_File backend is anything but usable with any system
- * that uses tagging (such as Magento). This backend is nearly as fast with save()
- * and load() operations, but literally several orders of magnitude faster for any tag-related
- * operations.
- *
- * Also, the original hashed directory structure had very poor distribution due to
- * the adler32 hashing algorithm and prefixes. The nested directories were also not
- * beneficial in any way versus using multiple characters from the hash at one level.
+ * The stock Zend_Cache_Backend_File backend has extremely poor performance for 
+ * cleaning by tags making it become unusable as the number of cached items
+ * increases. This backend sacrifices a little in save() performance for huge
+ * gains in tag-based operations and as a result of the reduced disk utilization
+ * should improve read performance as well in a high-contention scenario. Also,
+ * the original hashed directory structure had very poor distribution due to
+ * the adler32 hashing algorithm and prefixes. The multi-level nested directories
+ * have been dropped in favor of single-level nesting made from multiple characters.
  *
  * Benchmark tool here: https://github.com/colinmollenhour/magento-cache-benchmark
+ *
+ * Installation:
+ *  1. Clone module with modman
+ *  2. Edit app/etc/local.xml changing global/cache/backend to "Cm_Cache_Backend_File"
+ *  3. Delete all contents of cache directory
  *
  * Thanks to Vinai Kopp for the inspiring this backend with your symlink rendition!
  *

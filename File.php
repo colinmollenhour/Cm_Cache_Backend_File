@@ -101,7 +101,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      *
      * @param string $id cache id
      * @param boolean $doNotTestCacheValidity if set to true, the cache validity won't be tested
-     * @return string|false cached datas
+     * @return string|bool cached datas
      */
     public function load($id, $doNotTestCacheValidity = false)
     {
@@ -142,7 +142,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
     public function save($data, $id, $tags = array(), $specificLifetime = false)
     {
         $res = parent::save($data, $id, $tags, $specificLifetime);
-        $res = $res && $this->_writeIdTags($id, $tags);
+        $res = $res && $this->_updateIdsTags(array($id), $tags, 'merge');
         return $res;
     }
 
@@ -159,7 +159,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         if ($metadatas) {
             $boolRemove   = $this->_remove($file);
             $boolMetadata = $this->_delMetadatas($id);
-            $boolTags     = $this->_removeIdTags($id, $metadatas['tags']);
+            $boolTags     = $this->_updateIdsTags(array($id), $metadatas['tags'], 'diff');
             return $boolMetadata && $boolRemove && $boolTags;
         }
         return true;
@@ -273,7 +273,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      * Get a metadatas record
      *
      * @param  string $id  Cache id
-     * @return array|false Associative array of metadatas
+     * @return array|bool Associative array of metadatas
      */
     protected function _getMetadatas($id)
     {
@@ -384,10 +384,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
                 break;
             case Zend_Cache::CLEANING_MODE_NOT_MATCHING_TAG:
             case Zend_Cache::CLEANING_MODE_MATCHING_TAG:
-                foreach ($tags as $tag) {
-                    $tagIds = array_diff($this->_getTagIds($tag), $ids);
-                    $this->_saveTagIds($tag, $tagIds);
-                }
+                $this->_updateIdsTags($ids, $tags, 'diff');
                 break;
         }
         return $result;
@@ -423,11 +420,12 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
                         }
                         $ids = array_intersect($ids, $this->_getTagIds($tag));
                     }
+                    $ids = array_unique($ids);
                 }
                 break;
             case Zend_Cache::CLEANING_MODE_MATCHING_ANY_TAG:
                 foreach ($tags as $tag) {
-                    $ids = array_merge($ids, $this->_getTagIds($tag));
+                    $ids = $ids + $this->_getTagIds($tag);
                 }
                 $ids = array_unique($ids);
                 break;
@@ -467,112 +465,77 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
     }
 
     /**
-     * @param string $tag
+     * @param string|resource $tag
      * @return array
      */
     protected function _getTagIds($tag)
     {
-        $file = $this->_tagFile($tag);
-        $ids = file_get_contents($file);
+        if (is_resource($tag)) {
+            $ids = stream_get_contents($tag);
+        } else {
+            $ids = file_get_contents($this->_tagFile($tag));
+        }
         if( ! $ids) {
             return array();
         }
         $ids = substr($ids, 0, strrpos($ids, "\n"));
-        return array_unique( explode("\n", $ids));
+        return explode("\n", $ids);
     }
 
     /**
-     * @param string $tag
      * @param array $ids
-     * @return bool
-     */
-    protected function _saveTagIds($tag, $ids)
-    {
-        $file = $this->_tagFile($tag);
-        if ($ids) {
-            return $this->_filePutContents($file, implode("\n", array_unique($ids))."\n");
-        } else if (file_exists($file)) {
-            return $this->_remove($file);
-        }
-        return true;
-    }
-
-    /**
-     * @param string $id
      * @param array $tags
+     * @param string $mode
      * @return bool
      */
-    protected function _saveIdTags($id, $tags)
-    {
-        $result = true;
-        foreach($tags as $tag) {
-            $ids = $this->_getTagIds($tag);
-            $ids[] = $id;
-            $result = $this->_saveTagIds($tag, $ids) && $result;
-        }
-        return $result;
-    }
-
-    /**
-     * @param string $id
-     * @param array $tags
-     * @return bool
-     */
-    protected function _writeIdTags($id, $tags)
+    protected function _updateIdsTags($ids, $tags, $mode)
     {
         $result = true;
         foreach($tags as $tag) {
             $file = $this->_tagFile($tag);
-            if (is_readable($file) && rand(1,100) == 1 && filesize($file) > 4096) {
-                $result = $this->_saveIdTags($id, array($tag)) && $result;
-            } else {
-                $result = $this->_fileAppendContents($file, "$tag\n") && $result;
+            if (file_exists($file)) {
+                if ( ! $ids && $mode == 'diff') {
+                    $result = $this->_remove($file);
+                }
+                else if ($mode == 'diff' || (rand(1,100) == 1 && filesize($file) > 4096)) {
+                    $file = $this->_tagFile($tag);
+                    if ( ! ($fd = fopen($file, 'rb+'))) {
+                        $result = false;
+                        continue;
+                    }
+                    if ($this->_options['file_locking']) flock($fd, LOCK_EX);
+                    if ($mode == 'diff') {
+                        $ids = array_diff($this->_getTagIds($fd), $ids);
+                    } else if ($mode == 'merge') {
+                        $ids = $this->_getTagIds($fd) + $ids;
+                    }
+                    fseek($fd, 0);
+                    ftruncate($fd, 0);
+                    $result = fwrite($fd, implode("\n", array_unique($ids))."\n") && $result;
+                    fclose($fd);
+                }
+                else {
+                    $result = file_put_contents($file, implode("\n", $ids)."\n", FILE_APPEND | ($this->_options['file_locking'] ? LOCK_EX : 0)) && $result;
+                }
+            } else if ($mode == 'merge') {
+                $result = $this->_filePutContents($file, implode("\n", $ids)."\n") && $result;
             }
         }
         return $result;
     }
 
     /**
-     * @param string $id
-     * @param array $tags
-     * @return bool
+     * Put the given string into the given file
+     *
+     * @param  string $file   File complete path
+     * @param  string $string String to put in file
+     * @return boolean true if no problem
      */
-    protected function _removeIdTags($id, $tags)
+    protected function _filePutContents($file, $string)
     {
-        $result = true;
-        foreach($tags as $tag) {
-            $ids = array_diff($this->_getTagIds($tag), array($id));
-            $result = $this->_saveTagIds($tag, $ids) && $result;
-        }
+        $result = @file_put_contents($file, $string, $this->_options['file_locking'] ? LOCK_EX : 0);
+        $result && chmod($file, $this->_options['cache_file_umask']);
         return $result;
     }
-
-  /**
-   * Put the given string into the given file
-   *
-   * @param  string $file   File complete path
-   * @param  string $string String to put in file
-   * @return boolean true if no problem
-   */
-  protected function _filePutContents($file, $string)
-  {
-      $result = @file_put_contents($file, $string, $this->_options['file_locking'] ? LOCK_EX : 0);
-      $result && chmod($file, $this->_options['cache_file_umask']);
-      return $result;
-  }
-
-  /**
-   * Put the given string into the given file
-   *
-   * @param  string $file   File complete path
-   * @param  string $string String to put in file
-   * @return boolean true if no problem
-   */
-  protected function _fileAppendContents($file, $string)
-  {
-    $result = @file_put_contents($file, $string, FILE_APPEND | ($this->_options['file_locking'] ? LOCK_EX : 0));
-    $result && chmod($file, $this->_options['cache_file_umask']);
-    return $result;
-  }
 
 }

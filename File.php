@@ -441,10 +441,12 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
     protected function _getTagIds($tag)
     {
         $file = $this->_tagFile($tag);
-        if($ids = $this->_fileGetContents($file)) {
-            return array_unique((array)explode("\n", rtrim($ids,"\n")));
+        $ids = file_get_contents($file);
+        if( ! $ids) {
+            return array();
         }
-        return array();
+        $ids = substr($ids, 0, strrpos($ids, "\n"));
+        return array_unique( explode("\n", $ids));
     }
 
     /**
@@ -457,23 +459,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         $file = $this->_tagFile($tag);
         if ($ids) {
             return $this->_filePutContents($file, implode("\n", array_unique($ids))."\n");
-        } else if(is_file($file)) {
-            return $this->_remove($file);
-        }
-        return true;
-    }
-
-    /**
-     * @param string $tag
-     * @param array $ids
-     * @return bool
-     */
-    protected function _appendTagIds($tag, $ids)
-    {
-        $file = $this->_tagFile($tag);
-        if ($ids) {
-            return $this->_fileAppendContents($file, implode("\n", $ids)."\n");
-        } else if(is_file($file)) {
+        } else if (file_exists($file)) {
             return $this->_remove($file);
         }
         return true;
@@ -505,10 +491,10 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         $result = true;
         foreach($tags as $tag) {
             $file = $this->_tagFile($tag);
-            if (rand(1,100) == 1 && @filesize($file) > 4096) {
-                $result = $this->_saveIdTags($id, array($tag));
+            if (is_readable($file) && rand(1,100) == 1 && filesize($file) > 4096) {
+                $result = $this->_saveIdTags($id, array($tag)) && $result;
             } else {
-                $result = $this->_appendTagIds($tag, array($id)) && $result;
+                $result = $this->_fileAppendContents($file, "$tag\n") && $result;
             }
         }
         return $result;
@@ -536,20 +522,25 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
    * @param  string $string String to put in file
    * @return boolean true if no problem
    */
+  protected function _filePutContents($file, $string)
+  {
+      $result = @file_put_contents($file, $string, $this->_options['file_locking'] ? LOCK_EX : 0);
+      $result && chmod($file, $this->_options['cache_file_umask']);
+      return $result;
+  }
+
+  /**
+   * Put the given string into the given file
+   *
+   * @param  string $file   File complete path
+   * @param  string $string String to put in file
+   * @return boolean true if no problem
+   */
   protected function _fileAppendContents($file, $string)
   {
-      $result = false;
-      $f = @fopen($file, 'ab');
-      if ($f) {
-          if ($this->_options['file_locking']) @flock($f, LOCK_EX);
-          $tmp = @fwrite($f, $string);
-          if (!($tmp === FALSE)) {
-              $result = true;
-          }
-          @fclose($f);
-      }
-      @chmod($file, $this->_options['cache_file_umask']);
-      return $result;
+    $result = @file_put_contents($file, $string, FILE_APPEND | ($this->_options['file_locking'] ? LOCK_EX : 0));
+    $result && chmod($file, $this->_options['cache_file_umask']);
+    return $result;
   }
 
 }

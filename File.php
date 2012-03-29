@@ -92,12 +92,14 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         'metadatas_array_max_size' => 100
     );
 
+    protected $isTagDir;
+
     /**
      * @param array $options
      */
     public function __construct(array $options = array())
     {
-        if ( ! isset($options['cache_dir']) || ! strlen($options['cache_dir']) && class_exists('Mage', false)) {
+        if (empty($options['cache_dir']) && class_exists('Mage', false)) {
             $options['cache_dir'] = Mage::getBaseDir('cache');
         }
         parent::__construct($options);
@@ -191,7 +193,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
             $boolTags     = $this->_updateIdsTags(array($id), explode(',', $metadatas['tags']), 'diff');
             return $boolRemove && $boolTags;
         }
-        return true;
+        return false;
     }
 
     /**
@@ -323,7 +325,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
             'expire' => $metadatas['expire'] + $extraLifetime,
             'tags' => $metadatas['tags']
         );
-        return $this->_filePutContents($file, serialize($newMetadatas)."\n".$data);
+        return !! $this->_filePutContents($file, serialize($newMetadatas)."\n".$data);
     }
 
     /**
@@ -352,6 +354,17 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
             return array($metadatas, $data);
         }
         return $metadatas;
+    }
+
+    /**
+     * Get a metadatas record
+     *
+     * @param  string $id  Cache id
+     * @return array|false Associative array of metadatas
+     */
+    protected function _getMetadatas($id)
+    {
+        return $this->_getCache($this->_file($id), false);
     }
 
     /**
@@ -599,7 +612,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         if (is_resource($tag)) {
             $ids = stream_get_contents($tag);
         } else {
-            $ids = file_get_contents($this->_tagFile($tag));
+            $ids = @file_get_contents($this->_tagFile($tag));
         }
         if( ! $ids) {
             return array();
@@ -662,6 +675,12 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         $result = @file_put_contents($file, $string, $this->_options['file_locking'] ? LOCK_EX : 0);
         $result && chmod($file, $this->_options['cache_file_umask']);
         return $result;
+    }
+
+    public function ___expire($id)
+    {
+        $metadatas = $this->_getMetadatas($id);
+        $this->touch($id, 1 - $metadatas['expire']);
     }
 
 }

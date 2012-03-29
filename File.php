@@ -10,7 +10,13 @@
  * The stock Zend_Cache_Backend_File backend is anything but usable with any system
  * that uses tagging (such as Magento). This backend is nearly as fast with save()
  * and load() operations, but literally several orders of magnitude faster for any tag-related
- * operations. Benchmark tool here: https://github.com/colinmollenhour/magento-cache-benchmark
+ * operations.
+ *
+ * Also, the original hashed directory structure had very poor distribution due to
+ * the adler32 hashing algorithm and prefixes. The nested directories were also not
+ * beneficial in any way versus using multiple characters from the hash at one level.
+ *
+ * Benchmark tool here: https://github.com/colinmollenhour/magento-cache-benchmark
  *
  * Thanks to Vinai Kopp for the inspiring this backend with your symlink rendition!
  *
@@ -72,7 +78,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         'file_locking' => true,
         'read_control' => false,
         'read_control_type' => 'crc32',
-        'hashed_directory_level' => 1,
+        'hashed_directory_level' => 2,
         'hashed_directory_umask' => 0770,
         'file_name_prefix' => 'cm',
         'cache_file_umask' => 0660,
@@ -290,7 +296,33 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         return true;
     }
 
-      /**
+    /**
+     * Return the complete directory path of a filename (including hashedDirectoryStructure)
+     *
+     * Uses multiple letters for a single-level hash rather than multiple levels
+     *
+     * @param  string $id Cache id
+     * @param  boolean $parts if true, returns array of directory parts instead of single string
+     * @return string Complete directory path
+     */
+    protected function _path($id, $parts = false)
+    {
+        $partsArray = array();
+        $root = $this->_options['cache_dir'];
+        $prefix = $this->_options['file_name_prefix'];
+        if ($this->_options['hashed_directory_level']>0) {
+            $hash = hash('adler32', $id);
+            $root = $root . $prefix . '--' . substr($hash, -$this->_options['hashed_directory_level']) . DIRECTORY_SEPARATOR;
+            $partsArray[] = $root;
+        }
+        if ($parts) {
+            return $partsArray;
+        } else {
+            return $root;
+        }
+    }
+
+    /**
      * Save metadatas to disk
      *
      * @param  string $id        Cache id

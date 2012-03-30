@@ -425,7 +425,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      * @throws Zend_Cache_Exception
      * @return boolean True if no problem
      */
-    protected function _clean($dir, $mode = Zend_Cache::CLEANING_MODE_ALL)
+    protected function _clean($dir, $mode = Zend_Cache::CLEANING_MODE_ALL, $tags = array())
     {
         if (!is_dir($dir)) {
             return false;

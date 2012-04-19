@@ -316,26 +316,27 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
             return false;
         }
         if ($this->_options['file_locking']) flock($fd, LOCK_SH);
-        $metadatas = fgets($fd);
-        if ( ! $metadatas) {
+        $metadata = fgets($fd);
+        if ( ! $metadata) {
+            fclose($fd);
             return false;
         }
         if ($withData) {
             $data = stream_get_contents($fd);
         }
         fclose($fd);
-        $metadatas = @unserialize(rtrim($metadatas,"\n"));
+        $metadata = @unserialize(rtrim($metadata,"\n"));
         if ($withData) {
-            return array($metadatas, $data);
+            return array($metadata, $data);
         }
-        return $metadatas;
+        return $metadata;
     }
 
     /**
      * Get a metadatas record
      *
      * @param  string $id  Cache id
-     * @return array|false Associative array of metadatas
+     * @return array|bool Associative array of metadatas
      */
     protected function _getMetadatas($id)
     {
@@ -395,8 +396,9 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      * Zend_Cache::CLEANING_MODE_MATCHING_ANY_TAG => remove cache entries matching any given tags
      *                                               ($tags can be an array of strings or a single string)
      *
-     * @param  string $dir  Directory to clean
-     * @param  string $mode Clean mode
+     * @param string $dir  Directory to clean
+     * @param string $mode Clean mode
+     * @param array $tags
      * @throws Zend_Cache_Exception
      * @return boolean True if no problem
      */
@@ -652,10 +654,14 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         return $result;
     }
 
+    /**
+     * For unit testing only
+     * @param $id
+     */
     public function ___expire($id)
     {
-        $metadatas = $this->_getMetadatas($id);
-        $this->touch($id, 1 - $metadatas['expire']);
+        $metadata = $this->_getMetadatas($id);
+        $this->touch($id, 1 - $metadata['expire']);
     }
 
 }

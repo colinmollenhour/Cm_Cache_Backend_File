@@ -26,8 +26,8 @@ Test it for yourself with the [Magento Cache Benchmark](https://github.com/colin
 Installation
 ------------
 
-1. Clone module with modman
-2. Edit app/etc/local.xml changing global/cache/backend to `Cm_Cache_Backend_File`
+1. Clone module with [modman](https://github.com/colinmollenhour/modman)
+2. Edit `app/etc/local.xml` changing `global/cache/backend` to `Cm_Cache_Backend_File`
 3. Delete all contents of the cache directory
 
 Special Thanks
@@ -35,6 +35,7 @@ Special Thanks
 
 Thanks to Vinai Kopp for the inspiring this backend with your symlink rendition!
 
-
-> @copyright  Copyright (c) 2012 Colin Mollenhour (http://colin.mollenhour.com)
-> @license    http://framework.zend.com/license/new-bsd     New BSD License
+```
+@copyright  Copyright (c) 2012 Colin Mollenhour (http://colin.mollenhour.com)
+@license    http://framework.zend.com/license/new-bsd     New BSD License
+```

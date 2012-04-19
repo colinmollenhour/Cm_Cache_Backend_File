@@ -644,13 +644,13 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
                     }
                     if ($this->_options['file_locking']) flock($fd, LOCK_EX);
                     if ($mode == 'diff') {
-                        $ids = array_diff($this->_getTagIds($fd), $ids);
-                    } else if ($mode == 'merge') {
-                        $ids = $this->_getTagIds($fd) + $ids;
+                        $_ids = array_diff($this->_getTagIds($fd), $ids);
+                    } else { // if ($mode == 'merge')
+                        $_ids = $this->_getTagIds($fd) + $ids;
                     }
                     fseek($fd, 0);
                     ftruncate($fd, 0);
-                    $result = fwrite($fd, implode("\n", array_unique($ids))."\n") && $result;
+                    $result = fwrite($fd, implode("\n", array_unique($_ids))."\n") && $result;
                     fclose($fd);
                 }
                 else {

@@ -21,19 +21,20 @@ Is the improvement substantial? Definitely. Tag cleaning is literally thousands 
 times faster, loading is twice as fast, and saving is slightly slower dependent on
 the number of tags being saved.
 
-Test it for yourself with the "Magento Cache Benchmark":https://github.com/colinmollenhour/magento-cache-benchmark.
+Test it for yourself with the [Magento Cache Benchmark](https://github.com/colinmollenhour/magento-cache-benchmark).
 
 Installation
 ------------
 
- # Clone module with modman
- # Edit app/etc/local.xml changing global/cache/backend to `Cm_Cache_Backend_File`
- # Delete all contents of the cache directory
+1. Clone module with modman
+2. Edit app/etc/local.xml changing global/cache/backend to `Cm_Cache_Backend_File`
+3. Delete all contents of the cache directory
 
 Special Thanks
 --------------
 
 Thanks to Vinai Kopp for the inspiring this backend with your symlink rendition!
 
-@copyright  Copyright (c) 2012 Colin Mollenhour (http://colin.mollenhour.com)
-@license    http://framework.zend.com/license/new-bsd     New BSD License
+
+> @copyright  Copyright (c) 2012 Colin Mollenhour (http://colin.mollenhour.com)
+> @license    http://framework.zend.com/license/new-bsd     New BSD License

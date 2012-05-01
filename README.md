@@ -37,5 +37,4 @@ Thanks to Vinai Kopp for the inspiring this backend with your symlink rendition!
 
 ```
 @copyright  Copyright (c) 2012 Colin Mollenhour (http://colin.mollenhour.com)
-@license    http://framework.zend.com/license/new-bsd     New BSD License
 ```

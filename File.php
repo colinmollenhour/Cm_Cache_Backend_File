@@ -339,12 +339,14 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         if ($this->_options['file_locking']) flock($fd, LOCK_SH);
         $metadata = fgets($fd);
         if ( ! $metadata) {
+            if ($this->_options['file_locking']) flock($fd, LOCK_UN);
             fclose($fd);
             return false;
         }
         if ($withData) {
             $data = stream_get_contents($fd);
         }
+        if ($this->_options['file_locking']) flock($fd, LOCK_UN);
         fclose($fd);
         $metadata = @unserialize(rtrim($metadata,"\n"));
         if ($withData) {
@@ -649,6 +651,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
                     fseek($fd, 0);
                     ftruncate($fd, 0);
                     $result = fwrite($fd, implode("\n", array_unique($_ids))."\n") && $result;
+                    if ($this->_options['file_locking']) flock($fd, LOCK_UN);
                     fclose($fd);
                 }
                 else {

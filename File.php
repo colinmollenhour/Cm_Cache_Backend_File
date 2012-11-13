@@ -47,6 +47,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         'hashed_directory_umask' => 0770,  // Filesystem permissions for created directories (not actually a mask)
         'file_name_prefix' => 'cm',        // Prefix for cache directories created
         'cache_file_umask' => 0660,        // Filesystem permissions for created files (not actually a mask)
+        'metadatas_array_max_size' => 100, // This is here only for backwards compatibility; it has no effect but do not delete it.
     );
 
     /** @var bool */

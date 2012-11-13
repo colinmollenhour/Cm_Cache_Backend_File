@@ -1,8 +1,5 @@
 <?php
-/**
- * Cm_Cache_Backend_File
- *
-
+/*
 ==New BSD License==
 
 Copyright (c) 2012, Colin Mollenhour
@@ -22,7 +19,7 @@ modification, are permitted provided that the following conditions are met:
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY
 DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
@@ -30,65 +27,30 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+/**
+ * Cm_Cache_Backend_File
+ *
+ * @copyright  Copyright (c) 2012 Colin Mollenhour (http://colin.mollenhour.com)
+ * @license    http://framework.zend.com/license/new-bsd     New BSD License
+ */
 class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
 {
-    /**
-     * Available options
-     *
-     * =====> (string) cache_dir :
-     * - Directory where to put the cache files
-     *
-     * =====> (boolean) file_locking :
-     * - Enable / disable file_locking
-     * - Can avoid cache corruption under bad circumstances but it doesn't work on multithread
-     * webservers and on NFS filesystems for example
-     *
-     * =====> (boolean) read_control :
-     * - Enable / disable read control
-     * - If enabled, a control key is embeded in cache file and this key is compared with the one
-     * calculated after the reading.
-     *
-     * =====> (string) read_control_type :
-     * - Type of read control (only if read control is enabled). Available values are :
-     *   'md5' for a md5 hash control (best but slowest)
-     *   'crc32' for a crc32 hash control (lightly less safe but faster, better choice)
-     *   'adler32' for an adler32 hash control (excellent choice too, faster than crc32)
-     *   'strlen' for a length only test (fastest)
-     *
-     * =====> (int) hashed_directory_level :
-     * - Hashed directory level
-     * - Set the hashed directory structure level. 0 means "no hashed directory
-     * structure", 1 means "one level of directory", 2 means "two levels"...
-     * This option can speed up the cache only when you have many thousands of
-     * cache file. Only specific benchs can help you to choose the perfect value
-     * for you. Maybe, 1 or 2 is a good start.
-     *
-     * =====> (int) hashed_directory_umask :
-     * - Umask for hashed directory structure
-     *
-     * =====> (string) file_name_prefix :
-     * - prefix for cache files
-     * - be really carefull with this option because a too generic value in a system cache dir
-     *   (like /tmp) can cause disasters when cleaning the cache
-     *
-     * =====> (int) cache_file_umask :
-     * - Umask for cache files
-     *
-     * @var array available options
-     */
+
+    /** @var array */
     protected $_options = array(
-        'cache_dir' => null,
-        'file_locking' => true,
-        'read_control' => false,
-        'read_control_type' => 'crc32',
-        'hashed_directory_level' => 2,
-        'hashed_directory_umask' => 0770,
-        'file_name_prefix' => 'cm',
-        'cache_file_umask' => 0660,
-        'metadatas_array_max_size' => 100
+        'cache_dir' => null,               // Path to cache files
+        'file_locking' => true,            // Best to keep enabled
+        'read_control' => false,           // Use a checksum to detect corrupt data
+        'read_control_type' => 'crc32',    // If read_control is enabled, which checksum algorithm to use
+        'hashed_directory_level' => 2,     // How many characters should be used to create sub-directories
+        'hashed_directory_umask' => 0770,  // Filesystem permissions for created directories (not actually a mask)
+        'file_name_prefix' => 'cm',        // Prefix for cache directories created
+        'cache_file_umask' => 0660,        // Filesystem permissions for created files (not actually a mask)
     );
 
-    protected $isTagDir;
+    /** @var bool */
+    protected $_isTagDirChecked;
 
     /**
      * @param array $options
@@ -356,10 +318,10 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
     }
 
     /**
-     * Get a metadatas record
+     * Get meta data from a cache record
      *
      * @param  string $id  Cache id
-     * @return array|bool Associative array of metadatas
+     * @return array|bool Associative array of meta data
      */
     protected function _getMetadatas($id)
     {
@@ -593,12 +555,12 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
     protected function _tagPath()
     {
         $path = $this->_options['cache_dir'] . DIRECTORY_SEPARATOR . 'tags' . DIRECTORY_SEPARATOR;
-        if ( ! $this->isTagDir) {
+        if ( ! $this->_isTagDirChecked) {
             if ( ! is_dir($path)) {
                 @mkdir($path, $this->_options['hashed_directory_umask']);
                 @chmod($path, $this->_options['hashed_directory_umask']); // see #ZF-320 (this line is required in some configurations)
             }
-            $this->isTagDir = true;
+            $this->_isTagDirChecked = true;
         }
         return $path;
     }

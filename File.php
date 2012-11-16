@@ -44,10 +44,9 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         'read_control' => false,           // Use a checksum to detect corrupt data
         'read_control_type' => 'crc32',    // If read_control is enabled, which checksum algorithm to use
         'hashed_directory_level' => 2,     // How many characters should be used to create sub-directories
-        'hashed_directory_umask' => 0770,  // Filesystem permissions for created directories (not actually a mask)
+        'hashed_directory_perm' => 0770,   // Filesystem permissions for created directories
         'file_name_prefix' => 'cm',        // Prefix for cache directories created
-        'cache_file_umask' => 0660,        // Filesystem permissions for created files (not actually a mask)
-        'metadatas_array_max_size' => 100, // This is here only for backwards compatibility; it has no effect but do not delete it.
+        'cache_file_perm' => 0660,         // Filesystem permissions for created files
     );
 
     /** @var bool */
@@ -58,10 +57,45 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      */
     public function __construct(array $options = array())
     {
+        // Magento-friendly cache dir
         if (empty($options['cache_dir']) && class_exists('Mage', false)) {
             $options['cache_dir'] = Mage::getBaseDir('cache');
         }
-        parent::__construct($options);
+
+        // Backwards compatibility ZF 1.11 and ZF 1.12
+        if (isset($options['hashed_directory_umask'])) {
+            $options['hashed_directory_perm'] = $options['hashed_directory_umask'];
+        }
+        if (isset($options['cache_file_umask'])) {
+            $options['cache_file_perm'] = $options['cache_file_umask'];
+        }
+
+        // Don't use parent constructor
+        while (list($name, $value) = each($options)) {
+            $this->setOption($name, $value);
+        }
+
+        // Check cache dir
+        if ($this->_options['cache_dir'] !== null) { // particular case for this option
+            $this->setCacheDir($this->_options['cache_dir']);
+        } else {
+            $this->setCacheDir(self::getTmpDir() . DIRECTORY_SEPARATOR, false);
+        }
+
+        // Validate prefix
+        if (isset($this->_options['file_name_prefix'])) { // particular case for this option
+            if (!preg_match('~^[a-zA-Z0-9_]+$~D', $this->_options['file_name_prefix'])) {
+                Zend_Cache::throwException('Invalid file_name_prefix : must use only [a-zA-Z0-9_]');
+            }
+        }
+
+        // See #ZF-4422
+        if (is_string($this->_options['hashed_directory_perm'])) {
+            $this->_options['hashed_directory_perm'] = octdec($this->_options['hashed_directory_perm']);
+        }
+        if (is_string($this->_options['cache_file_perm'])) {
+            $this->_options['cache_file_perm'] = octdec($this->_options['cache_file_perm']);
+        }
     }
 
     /**

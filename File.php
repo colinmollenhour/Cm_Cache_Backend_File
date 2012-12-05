@@ -96,6 +96,8 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         if (is_string($this->_options['cache_file_perm'])) {
             $this->_options['cache_file_perm'] = octdec($this->_options['cache_file_perm']);
         }
+        $this->_options['hashed_directory_umask'] = $this->_options['hashed_directory_perm'];
+        $this->_options['cache_file_umask'] = $this->_options['cache_file_perm'];
     }
 
     /**
@@ -589,11 +591,11 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      */
     protected function _tagPath()
     {
-        $path = $this->_options['cache_dir'] . DIRECTORY_SEPARATOR . 'tags' . DIRECTORY_SEPARATOR;
+        $path = $this->_options['cache_dir'] . DIRECTORY_SEPARATOR . $this->_options['file_name_prefix']. '--tags' . DIRECTORY_SEPARATOR;
         if ( ! $this->_isTagDirChecked) {
             if ( ! is_dir($path)) {
-                @mkdir($path, $this->_options['hashed_directory_umask']);
-                @chmod($path, $this->_options['hashed_directory_umask']); // see #ZF-320 (this line is required in some configurations)
+                @mkdir($path, $this->_options['hashed_directory_perm']);
+                @chmod($path, $this->_options['hashed_directory_perm']); // see #ZF-320 (this line is required in some configurations)
             }
             $this->_isTagDirChecked = true;
         }
@@ -671,7 +673,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
     protected function _filePutContents($file, $string)
     {
         $result = @file_put_contents($file, $string, $this->_options['file_locking'] ? LOCK_EX : 0);
-        $result && chmod($file, $this->_options['cache_file_umask']);
+        $result && chmod($file, $this->_options['cache_file_perm']);
         return $result;
     }
 

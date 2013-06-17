@@ -30,6 +30,40 @@ Installation
 2. Edit `app/etc/local.xml` changing `global/cache/backend` to `Cm_Cache_Backend_File`
 3. Delete all contents of the cache directory
 
+Two Level Cache with APC for single node configuration
+
+    <!-- This is a child node of config/global -->
+    <cache>
+      <backend>Zend_Cache_Backend_TwoLevels</backend>
+      <backend_options>
+        <fast_backend>Apc</fast_backend>
+        <slow_backend>Cm_Cache_Backend_File</slow_backend>
+	      <slow_backend_options>
+		      <cache_dir>var/cache</cache_dir>
+		      <file_name_prefix>mage</file_name_prefix>
+		      <hashed_directory_umask>0777</hashed_directory_umask>
+		      <cache_file_umask>0777</cache_file_umask>
+	      </slow_backend_options>
+	      <slow_backend_custom_naming>1</slow_backend_custom_naming>
+	    </backend_options>
+    </cache>
+    
+    <!-- This is a child node of config/global for Magento Enterprise FPC -->
+    <full_page_cache>
+      <backend>Zend_Cache_Backend_TwoLevels</backend>
+	    <backend_options>
+	      <fast_backend>Apc</fast_backend>
+	      <slow_backend>Cm_Cache_Backend_File</slow_backend>
+	      <slow_backend_options>
+		      <cache_dir>var/full_page_cache</cache_dir>
+		      <file_name_prefix>mage_fpc</file_name_prefix>
+		      <hashed_directory_umask>0777</hashed_directory_umask>
+		      <cache_file_umask>0777</cache_file_umask>
+	       </slow_backend_options>
+	       <slow_backend_custom_naming>1</slow_backend_custom_naming>
+	     </backend_options>
+     </full_page_cache>
+
 Special Thanks
 --------------
 

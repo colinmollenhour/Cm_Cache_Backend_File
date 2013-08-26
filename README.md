@@ -30,6 +30,25 @@ Installation
 2. Edit `app/etc/local.xml` changing `global/cache/backend` to `Cm_Cache_Backend_File`
 3. Delete all contents of the cache directory
 
+Example Configuration
+---------------------
+
+```
+<config>
+    <global>
+        <cache>
+            <backend>Cm_Cache_Backend_File</backend>
+            <backend_options>
+                <hashed_directory_perm>0777</hashed_directory_perm>
+                <cache_file_perm>0666</cache_file_perm>
+            </backend_options>
+        </cache>
+        ...
+    </global>
+    ...
+</config>
+```
+
 Special Thanks
 --------------
 

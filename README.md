@@ -33,14 +33,37 @@ Installation
 Example Configuration
 ---------------------
 
+By default, Cm_Cache_Backend_File is configured *not* to use chmod to set file permissions. The
+proper way to do file permissions is to respect the umask and not set any permissions. This way
+the file permissions can be properly inherited such as when the setgid bit is used on the parent
+directory. To improve security the umask should be properly set. In Magento the umask is set in
+index.php as '0' which means no restrictions. To make files and directories no longer public
+change this to umask(0007).
+
+```
+<config>
+    <global>
+        <cache>
+            <backend>Cm_Cache_Backend_File</backend>
+        </cache>
+        ...
+    </global>
+    ...
+</config>
+```
+
+If umasks are too complicated and you prefer the sub-optimal (less-secure, needless system calls)
+approach you can enable the old chmod usage like so:
+
 ```
 <config>
     <global>
         <cache>
             <backend>Cm_Cache_Backend_File</backend>
             <backend_options>
-                <hashed_directory_perm>0777</hashed_directory_perm>
-                <cache_file_perm>0666</cache_file_perm>
+                <use_chmod>1</use_chmod>
+                <directory_mode>0777</directory_mode>
+                <file_mode>0666</file_mode>
             </backend_options>
         </cache>
         ...

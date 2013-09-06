@@ -595,7 +595,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         $path = $this->_options['cache_dir'] . DIRECTORY_SEPARATOR . $this->_options['file_name_prefix']. '-tags' . DIRECTORY_SEPARATOR;
         if ( ! $this->_isTagDirChecked) {
             if ( ! is_dir($path)) {
-                if (@mkdir($path, $this->_options['directory_mode']) && $this->_options['use_chmod']) {
+                if (@mkdir($path, $this->_options['use_chmod'] ? $this->_options['directory_mode'] : 0777) && $this->_options['use_chmod']) {
                     @chmod($path, $this->_options['directory_mode']); // see #ZF-320 (this line is required in some configurations)
                 }
             }
@@ -695,9 +695,9 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         $partsArray = $this->_path($id, true);
         foreach ($partsArray as $part) {
             if (!is_dir($part)) {
-                @mkdir($part, $this->_options['use_chmod'] ? $this->_options['hashed_directory_umask'] : NULL);
+                @mkdir($part, $this->_options['use_chmod'] ? $this->_options['directory_mode'] : 0777);
                 if ($this->_options['use_chmod']) {
-                    @chmod($part, $this->_options['hashed_directory_umask']); // see #ZF-320 (this line is required in some configurations)
+                    @chmod($part, $this->_options['directory_mode']); // see #ZF-320 (this line is required in some configurations)
                 }
             }
         }

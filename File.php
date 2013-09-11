@@ -564,7 +564,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
                 break;
             case Zend_Cache::CLEANING_MODE_MATCHING_ANY_TAG:
                 foreach ($tags as $tag) {
-                    $ids = $ids + $this->_getTagIds($tag);
+                    $ids = array_merge($ids,$this->_getTagIds($tag));
                 }
                 $ids = array_unique($ids);
                 break;
@@ -618,8 +618,8 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         if( ! $ids) {
             return array();
         }
-        $ids = substr($ids, 0, strrpos($ids, "\n"));
-        return explode("\n", $ids);
+        $ids = trim(substr($ids, 0, strrpos($ids, "\n")));
+        return $ids ? explode("\n", $ids) : array();
     }
 
     /**

@@ -1,7 +1,7 @@
 {
     "name":"colinmollenhour/cache-backend-file",
     "type":"magento-module",
-    "license":"OSL-3.0",
+    "license":"BSD-3-Clause",
     "homepage":"https://github.com/colinmollenhour/Cm_Cache_Backend_File",
     "description":"The stock Zend_Cache_Backend_File backend has extremely poor performance for cleaning by tags making it become unusable as the number of cached items increases. This backend makes many changes resulting in a huge performance boost, especially for tag cleaning.",
     "authors":[

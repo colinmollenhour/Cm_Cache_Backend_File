@@ -438,10 +438,9 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         }
         foreach ($glob as $file)  {
             if (is_file($file)) {
-                switch ($mode) {
-                    case Zend_Cache::CLEANING_MODE_ALL:
-                        $result = @unlink($file) && $result;
-                        continue;
+                if ($mode == Zend_Cache::CLEANING_MODE_ALL) {
+                    $result = @unlink($file) && $result;
+                    continue;
                 }
 
                 $id = $this->_fileNameToId(basename($file));
@@ -455,16 +454,14 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
                     @unlink($file);
                     continue;
                 }
-                switch ($mode) {
-                    case Zend_Cache::CLEANING_MODE_OLD:
-                        if (time() > $metadatas['expire']) {
-                            $result = $this->_remove($file) && $result;
-                            $result = $this->_updateIdsTags(array($id), explode(',', $metadatas['tags']), 'diff') && $result;
-                        }
-                        continue;
-                    default:
-                        Zend_Cache::throwException('Invalid mode for clean() method');
-                        break;
+                if ($mode == Zend_Cache::CLEANING_MODE_OLD) {
+                    if (time() > $metadatas['expire']) {
+                        $result = $this->_remove($file) && $result;
+                        $result = $this->_updateIdsTags(array($id), explode(',', $metadatas['tags']), 'diff') && $result;
+                    }
+                    continue;
+                } else {
+                    Zend_Cache::throwException('Invalid mode for clean() method.');
                 }
             }
             if ((is_dir($file)) and ($this->_options['hashed_directory_level']>0)) {

@@ -506,7 +506,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         foreach ($ids as $id) {
             $idFile = $this->_file($id);
             if (is_file($idFile)) {
-                $result = $result && $this->_remove($idFile);
+                $result = $this->_remove($idFile) && $result;
             }
         }
         switch($mode)
@@ -515,7 +515,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
                 foreach ($tags as $tag) {
                     $tagFile = $this->_tagFile($tag);
                     if (is_file($tagFile)) {
-                        $result = $result && $this->_remove($tagFile);
+                        $result = $this->_remove($tagFile) && $result;
                     }
                 }
                 break;
@@ -629,13 +629,13 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
     protected function _updateIdsTags($ids, $tags, $mode)
     {
         $result = true;
+        if (empty($ids)) {
+            return $result;
+        }
         foreach($tags as $tag) {
             $file = $this->_tagFile($tag);
             if (file_exists($file)) {
-                if ( ! $ids && $mode == 'diff') {
-                    $result = $this->_remove($file);
-                }
-                else if ($mode == 'diff' || (rand(1,100) == 1 && filesize($file) > 4096)) {
+                if ($mode == 'diff' || (rand(1,100) == 1 && filesize($file) > 4096)) {
                     $file = $this->_tagFile($tag);
                     if ( ! ($fd = fopen($file, 'rb+'))) {
                         $result = false;
@@ -644,8 +644,8 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
                     if ($this->_options['file_locking']) flock($fd, LOCK_EX);
                     if ($mode == 'diff') {
                         $_ids = array_diff($this->_getTagIds($fd), $ids);
-                    } else { // if ($mode == 'merge')
-                        $_ids = $this->_getTagIds($fd) + $ids;
+                    } else {
+                        $_ids = array_merge($this->_getTagIds($fd), $ids);
                     }
                     fseek($fd, 0);
                     ftruncate($fd, 0);

@@ -396,8 +396,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         $root = $this->_options['cache_dir'];
         $prefix = $this->_options['file_name_prefix'];
         if ($this->_options['hashed_directory_level']>0) {
-            $hash = hash('adler32', $id);
-            $root = $root . $prefix . '--' . substr($hash, -$this->_options['hashed_directory_level']) . DIRECTORY_SEPARATOR;
+            $root .= $prefix . '--' . substr(md5($id), -$this->_options['hashed_directory_level']) . DIRECTORY_SEPARATOR;
             $partsArray[] = $root;
         }
         if ($parts) {

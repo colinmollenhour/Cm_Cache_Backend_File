@@ -72,6 +72,11 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
             $options['file_mode'] = $options['cache_file_umask'];
         }
 
+        // Auto-enable chmod if modes are specified.
+        if (isset($options['directory_mode']) || isset($options['file_mode'])) {
+            $options['use_chmod'] = TRUE;
+        }
+
         // Don't use parent constructor
         while (list($name, $value) = each($options)) {
             $this->setOption($name, $value);

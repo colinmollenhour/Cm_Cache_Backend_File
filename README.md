@@ -33,13 +33,6 @@ Installation
 Example Configuration
 ---------------------
 
-By default, Cm_Cache_Backend_File is configured *not* to use chmod to set file permissions. The
-proper way to do file permissions is to respect the umask and not set any permissions. This way
-the file permissions can be properly inherited such as when the setgid bit is used on the parent
-directory. To improve security the umask should be properly set. In Magento the umask is set in
-index.php as '0' which means no restrictions. To make files and directories no longer public
-change this to umask(0007).
-
 ```xml
 <config>
     <global>
@@ -52,8 +45,16 @@ change this to umask(0007).
 </config>
 ```
 
+By default, `Cm_Cache_Backend_File` is configured *not* to use chmod to set file permissions. The
+proper way to do file permissions is to respect the umask and not set any permissions. This way
+the file permissions can be properly inherited using the OS conventions. To improve security the
+umask should be properly set. In Magento the umask is set in `index.php` as 0 which means no
+restrictions. So, for example to make files and directories no longer public add `umask(0007)` to
+`Mage.php`.
+
 If umasks are too complicated and you prefer the sub-optimal (less-secure, needless system calls)
-approach you can enable the old chmod usage like so:
+approach you can enable the legacy chmod usage as seen below. This will force the file modes to be
+set regardless of the umask.
 
 ```xml
 <config>
@@ -71,6 +72,14 @@ approach you can enable the old chmod usage like so:
     ...
 </config>
 ```
+
+For `directory_mode` the setgid bit can be set using 2 for the forth digit. E.g. 02770. This
+will cause files and directories created within the directory with the setgid bit to inherit the
+same group as the parent which is useful if you run scripts as users other than your web server user.
+The setgid bit can also be used with the default configuration (use_chmod off) by simply setting
+the bit on the var/cache directory one time using `chmod g+s var/cache`.
+
+Note that running your cron job as root is not a good practice from a security standpoint.
 
 Cleaning Old Files
 ------------------

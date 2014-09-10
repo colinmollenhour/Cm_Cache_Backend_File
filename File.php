@@ -404,11 +404,11 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
             $root .= $prefix . '--' . substr(md5($id), -$this->_options['hashed_directory_level']) . DIRECTORY_SEPARATOR;
             $partsArray[] = $root;
         }
-        if ($parts) {
-            return $partsArray;
-        } else {
-            return $root;
+        if ($parts){
+         return $partsArray;
         }
+        return $root;
+        
     }
 
     /**

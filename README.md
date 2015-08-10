@@ -94,9 +94,9 @@ ini_set('memory_limit','1024M');
 set_time_limit(0);
 error_reporting(E_ALL | E_STRICT);
 require_once 'app/Mage.php';
-Mage::app()->getCache()->getBackend()->clean('old');
+Mage::app()->getCache()->getBackend()->clean(Zend_Cache::CLEANING_MODE_OLD);
 // uncomment this for Magento Enterprise Edition
-// Enterprise_PageCache_Model_Cache::getCacheInstance()->getFrontend()->getBackend()->clean('old');
+// Enterprise_PageCache_Model_Cache::getCacheInstance()->getFrontend()->getBackend()->clean(Zend_Cache::CLEANING_MODE_OLD);
 ```
 
 Special Thanks

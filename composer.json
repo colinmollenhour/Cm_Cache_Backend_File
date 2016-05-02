@@ -11,5 +11,10 @@
     ],
     "require":{
         "magento-hackathon/magento-composer-installer":"*"
+    },
+    "autoload": {
+        "classmap": [
+            "File.php"
+        ]
     }
 }

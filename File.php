@@ -78,7 +78,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         }
 
         // Don't use parent constructor
-        while (list($name, $value) = each($options)) {
+        foreach ($options as $name => $value) {
             $this->setOption($name, $value);
         }
 

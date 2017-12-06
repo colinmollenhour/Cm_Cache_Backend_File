@@ -21,7 +21,10 @@
  */
 
 
-
+// backward compatibility (https://stackoverflow.com/a/42828632/187780)
+if (!class_exists('\PHPUnit\Framework\TestCase') && class_exists('\PHPUnit_Framework_TestCase')) {
+    class_alias('\PHPUnit_Framework_TestCase', '\PHPUnit\Framework\TestCase');
+}
 
 /**
  * @category   Zend
@@ -31,7 +34,7 @@
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  * @group      Zend_Cache
  */
-abstract class Zend_Cache_CommonBackendTest extends PHPUnit_Framework_TestCase {
+abstract class Zend_Cache_CommonBackendTest extends \PHPUnit\Framework\TestCase {
 
     protected $_instance;
     protected $_className;

@@ -108,6 +108,32 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
     }
 
     /**
+     * OVERRIDDEN to remove use of each() which is deprecated in PHP 7.2
+     *
+     * Set the frontend directives
+     *
+     * @param  array $directives Assoc of directives
+     * @throws Zend_Cache_Exception
+     * @return void
+     */
+    public function setDirectives($directives)
+    {
+        if (!is_array($directives)) Zend_Cache::throwException('Directives parameter must be an array');
+        foreach ($directives as $name => $value) {
+            if (!is_string($name)) {
+                Zend_Cache::throwException("Incorrect option name : $name");
+            }
+            $name = strtolower($name);
+            if (array_key_exists($name, $this->_directives)) {
+                $this->_directives[$name] = $value;
+            }
+
+        }
+
+        $this->_loggerSanity();
+    }
+
+    /**
      * Test if a cache is available for the given id and (if yes) return it (false else)
      *
      * @param string $id cache id

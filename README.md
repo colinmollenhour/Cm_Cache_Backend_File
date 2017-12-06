@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/colinmollenhour/Cm_Cache_Backend_File.svg?branch=master)](https://travis-ci.org/colinmollenhour/Cm_Cache_Backend_File)
+
 Cm_Cache_Backend_File
 =====================
 

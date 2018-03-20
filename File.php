@@ -533,12 +533,6 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
     {
         $result = true;
         $ids = $this->_getIdsByTags($mode, $tags);
-        foreach ($ids as $id) {
-            $idFile = $this->_file($id);
-            if (is_file($idFile)) {
-                $result = $this->_remove($idFile) && $result;
-            }
-        }
         switch($mode)
         {
             case Zend_Cache::CLEANING_MODE_MATCHING_ANY_TAG:
@@ -553,6 +547,12 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
             case Zend_Cache::CLEANING_MODE_MATCHING_TAG:
                 $this->_updateIdsTags($ids, $tags, 'diff');
                 break;
+        }
+        foreach ($ids as $id) {
+            $idFile = $this->_file($id);
+            if (is_file($idFile)) {
+                $result = $this->_remove($idFile) && $result;
+            }
         }
         return $result;
     }

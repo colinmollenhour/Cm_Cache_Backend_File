@@ -280,7 +280,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      */
     public function getIdsMatchingTags($tags = array())
     {
-        return $this->_getIdsByTags(Zend_Cache::CLEANING_MODE_MATCHING_TAG, $tags);
+        return $this->_getIdsByTags(Zend_Cache::CLEANING_MODE_MATCHING_TAG, $tags, FALSE);
     }
 
     /**
@@ -293,7 +293,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      */
     public function getIdsNotMatchingTags($tags = array())
     {
-        return $this->_getIdsByTags(Zend_Cache::CLEANING_MODE_NOT_MATCHING_TAG, $tags);
+        return $this->_getIdsByTags(Zend_Cache::CLEANING_MODE_NOT_MATCHING_TAG, $tags, FALSE);
     }
 
     /**
@@ -306,7 +306,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      */
     public function getIdsMatchingAnyTags($tags = array())
     {
-        return $this->_getIdsByTags(Zend_Cache::CLEANING_MODE_MATCHING_ANY_TAG, $tags);
+        return $this->_getIdsByTags(Zend_Cache::CLEANING_MODE_MATCHING_ANY_TAG, $tags, FALSE);
     }
 
     /**
@@ -532,17 +532,9 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
     protected function _cleanNew($mode = Zend_Cache::CLEANING_MODE_ALL, $tags = array())
     {
         $result = true;
-        $ids = $this->_getIdsByTags($mode, $tags);
+        $ids = $this->_getIdsByTags($mode, $tags, TRUE);
         switch($mode)
         {
-            case Zend_Cache::CLEANING_MODE_MATCHING_ANY_TAG:
-                foreach ($tags as $tag) {
-                    $tagFile = $this->_tagFile($tag);
-                    if (is_file($tagFile)) {
-                        $result = $this->_remove($tagFile) && $result;
-                    }
-                }
-                break;
             case Zend_Cache::CLEANING_MODE_NOT_MATCHING_TAG:
             case Zend_Cache::CLEANING_MODE_MATCHING_TAG:
                 $this->_updateIdsTags($ids, $tags, 'diff');
@@ -560,9 +552,10 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
     /**
      * @param string $mode
      * @param array $tags
+     * @param boolean $delete
      * @return array
      */
-    protected function _getIdsByTags($mode, $tags)
+    protected function _getIdsByTags($mode, $tags, $delete)
     {
         $ids = array();
         switch($mode) {
@@ -592,7 +585,18 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
                 break;
             case Zend_Cache::CLEANING_MODE_MATCHING_ANY_TAG:
                 foreach ($tags as $tag) {
-                    $ids = array_merge($ids,$this->_getTagIds($tag));
+                    $file = $this->_tagFile($tag);
+                    if ( ! ($fd = fopen($file, 'rb+'))) {
+                        continue;
+                    }
+                    if ($this->_options['file_locking']) flock($fd, LOCK_EX);
+                    $ids = array_merge($ids,$this->_getTagIds($fd));
+                    if ($delete) {
+                        fseek($fd, 0);
+                        ftruncate($fd, 0);
+                    }
+                    if ($this->_options['file_locking']) flock($fd, LOCK_UN);
+                    fclose($fd);
                 }
                 $ids = array_unique($ids);
                 break;
@@ -643,7 +647,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         } elseif(file_exists($this->_tagFile($tag))) {
             $ids = @file_get_contents($this->_tagFile($tag));
         } else {
-           $ids = false;
+            $ids = false;
         }
         if( ! $ids) {
             return array();

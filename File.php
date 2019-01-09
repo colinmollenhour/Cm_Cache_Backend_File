@@ -671,7 +671,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         foreach($tags as $tag) {
             $file = $this->_tagFile($tag);
             if (file_exists($file)) {
-                if ($mode == 'diff' || (rand(1,100) == 1 && filesize($file) > 4096)) {
+                if ($mode == 'diff' || (mt_rand(1,100) == 1 && filesize($file) > 4096)) {
                     $file = $this->_tagFile($tag);
                     if ( ! ($fd = @fopen($file, 'rb+'))) {
                         $result = false;

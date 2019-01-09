@@ -69,7 +69,7 @@ class Zend_Cache_CommonExtendedBackendTest extends Zend_Cache_CommonBackendTest 
 
     public function testGetIds()
     {
-        if (!($this->_capabilities['get_list'])) {
+        if (!$this->_capabilities['get_list']) {
             # unsupported by this backend
             return;
         }

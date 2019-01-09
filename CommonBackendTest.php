@@ -84,12 +84,10 @@ abstract class Zend_Cache_CommonBackendTest extends \PHPUnit\Framework\TestCase 
         }
         if (is_writeable($this->_root)) {
             return $this->_root . DIRECTORY_SEPARATOR . 'zend_cache_tmp_dir_' . $suffix;
+        } else if (getenv('TMPDIR')){
+            return getenv('TMPDIR') . DIRECTORY_SEPARATOR . 'zend_cache_tmp_dir_' . $suffix;
         } else {
-            if (getenv('TMPDIR')){
-                return getenv('TMPDIR') . DIRECTORY_SEPARATOR . 'zend_cache_tmp_dir_' . $suffix;
-            } else {
-                die("no writable tmpdir found");
-            }
+            die("no writable tmpdir found");
         }
     }
 

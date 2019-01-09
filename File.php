@@ -494,7 +494,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
                     Zend_Cache::throwException('Invalid mode for clean() method.');
                 }
             }
-            if ((is_dir($file)) and ($this->_options['hashed_directory_level']>0)) {
+            if (is_dir($file) && $this->_options['hashed_directory_level'] > 0) {
                 // Recursive call
                 $result = $this->_clean($file . DIRECTORY_SEPARATOR, $mode) && $result;
                 if ($mode == 'all') {

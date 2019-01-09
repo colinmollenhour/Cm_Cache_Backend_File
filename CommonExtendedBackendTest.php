@@ -69,7 +69,7 @@ class Zend_Cache_CommonExtendedBackendTest extends Zend_Cache_CommonBackendTest 
 
     public function testGetIds()
     {
-        if (!($this->_capabilities['get_list'])) {
+        if (!$this->_capabilities['get_list']) {
             # unsupported by this backend
             return;
         }
@@ -82,7 +82,7 @@ class Zend_Cache_CommonExtendedBackendTest extends Zend_Cache_CommonBackendTest 
 
     public function testGetTags()
     {
-        if (!($this->_capabilities['tags'])) {
+        if (!$this->_capabilities['tags']) {
             # unsupported by this backend
             return;
         }
@@ -96,7 +96,7 @@ class Zend_Cache_CommonExtendedBackendTest extends Zend_Cache_CommonBackendTest 
 
     public function testGetIdsMatchingTags()
     {
-        if (!($this->_capabilities['tags'])) {
+        if (!$this->_capabilities['tags']) {
             # unsupported by this backend
             return;
         }
@@ -109,7 +109,7 @@ class Zend_Cache_CommonExtendedBackendTest extends Zend_Cache_CommonBackendTest 
 
     public function testGetIdsMatchingTags2()
     {
-        if (!($this->_capabilities['tags'])) {
+        if (!$this->_capabilities['tags']) {
             # unsupported by this backend
             return;
         }
@@ -120,7 +120,7 @@ class Zend_Cache_CommonExtendedBackendTest extends Zend_Cache_CommonBackendTest 
 
     public function testGetIdsMatchingTags3()
     {
-        if (!($this->_capabilities['tags'])) {
+        if (!$this->_capabilities['tags']) {
             # unsupported by this backend
             return;
         }
@@ -131,7 +131,7 @@ class Zend_Cache_CommonExtendedBackendTest extends Zend_Cache_CommonBackendTest 
 
     public function testGetIdsMatchingTags4()
     {
-        if (!($this->_capabilities['tags'])) {
+        if (!$this->_capabilities['tags']) {
             # unsupported by this backend
             return;
         }
@@ -142,7 +142,7 @@ class Zend_Cache_CommonExtendedBackendTest extends Zend_Cache_CommonBackendTest 
 
     public function testGetIdsNotMatchingTags()
     {
-        if (!($this->_capabilities['tags'])) {
+        if (!$this->_capabilities['tags']) {
             # unsupported by this backend
             return;
         }
@@ -152,7 +152,7 @@ class Zend_Cache_CommonExtendedBackendTest extends Zend_Cache_CommonBackendTest 
 
     public function testGetIdsNotMatchingTags2()
     {
-        if (!($this->_capabilities['tags'])) {
+        if (!$this->_capabilities['tags']) {
             # unsupported by this backend
             return;
         }
@@ -164,7 +164,7 @@ class Zend_Cache_CommonExtendedBackendTest extends Zend_Cache_CommonBackendTest 
 
     public function testGetIdsNotMatchingTags3()
     {
-        if (!($this->_capabilities['tags'])) {
+        if (!$this->_capabilities['tags']) {
             # unsupported by this backend
             return;
         }
@@ -197,7 +197,7 @@ class Zend_Cache_CommonExtendedBackendTest extends Zend_Cache_CommonBackendTest 
         $this->assertTrue($bool);
         $res2 = $this->_instance->getMetadatas('bar');
         $this->assertTrue(($res2['expire'] - $res['expire']) == 30);
-        $this->assertTrue(($res2['mtime'] >= $res['mtime']));
+        $this->assertTrue($res2['mtime'] >= $res['mtime']);
     }
 
     public function testGetCapabilities()

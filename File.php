@@ -584,7 +584,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
             case Zend_Cache::CLEANING_MODE_MATCHING_ANY_TAG:
                 foreach ($tags as $tag) {
                     $file = $this->_tagFile($tag);
-                    if ( ! ($fd = @fopen($file, 'rb+'))) {
+                    if ( ! is_file($file) || ! ($fd = @fopen($file, 'rb+'))) {
                         continue;
                     }
                     if ($this->_options['file_locking']) flock($fd, LOCK_EX);

@@ -46,7 +46,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         'read_control' => false,           // Use a checksum to detect corrupt data
         'read_control_type' => 'crc32',    // If read_control is enabled, which checksum algorithm to use
         'hashed_directory_level' => 2,     // How many characters should be used to create sub-directories
-        'use_chmod' => FALSE,              // Do not use chmod on files and directories (should use umask() to control permissions)
+        'use_chmod' => false,              // Do not use chmod on files and directories (should use umask() to control permissions)
         'directory_mode' => 0770,          // Filesystem permissions for created directories (requires use_chmod)
         'file_mode' => 0660,               // Filesystem permissions for created files (requires use_chmod)
     );
@@ -74,7 +74,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
 
         // Auto-enable chmod if modes are specified.
         if (isset($options['directory_mode']) || isset($options['file_mode'])) {
-            $options['use_chmod'] = TRUE;
+            $options['use_chmod'] = true;
         }
 
         // Don't use parent constructor
@@ -278,7 +278,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      */
     public function getIdsMatchingTags($tags = array())
     {
-        return $this->_getIdsByTags(Zend_Cache::CLEANING_MODE_MATCHING_TAG, $tags, FALSE);
+        return $this->_getIdsByTags(Zend_Cache::CLEANING_MODE_MATCHING_TAG, $tags, false);
     }
 
     /**
@@ -291,7 +291,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      */
     public function getIdsNotMatchingTags($tags = array())
     {
-        return $this->_getIdsByTags(Zend_Cache::CLEANING_MODE_NOT_MATCHING_TAG, $tags, FALSE);
+        return $this->_getIdsByTags(Zend_Cache::CLEANING_MODE_NOT_MATCHING_TAG, $tags, false);
     }
 
     /**
@@ -304,7 +304,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      */
     public function getIdsMatchingAnyTags($tags = array())
     {
-        return $this->_getIdsByTags(Zend_Cache::CLEANING_MODE_MATCHING_ANY_TAG, $tags, FALSE);
+        return $this->_getIdsByTags(Zend_Cache::CLEANING_MODE_MATCHING_ANY_TAG, $tags, false);
     }
 
     /**
@@ -530,7 +530,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
     protected function _cleanNew($mode = Zend_Cache::CLEANING_MODE_ALL, $tags = array())
     {
         $result = true;
-        $ids = $this->_getIdsByTags($mode, $tags, TRUE);
+        $ids = $this->_getIdsByTags($mode, $tags, true);
         switch($mode)
         {
             case Zend_Cache::CLEANING_MODE_NOT_MATCHING_TAG:

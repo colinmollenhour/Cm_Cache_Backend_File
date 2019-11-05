@@ -196,7 +196,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         $metadatas = array(
             'hash' => $hash,
             'mtime' => time(),
-            'expire' => $this->_expireTime($this->getLifetime($specificLifetime)),
+            'expire' => $this->_expireTime((int)$this->getLifetime($specificLifetime)),
             'tags' => implode(',', $tags),
         );
         $res = $this->_filePutContents($file, serialize($metadatas)."\n".$data);
@@ -432,7 +432,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
          return $partsArray;
         }
         return $root;
-        
+
     }
 
     /**

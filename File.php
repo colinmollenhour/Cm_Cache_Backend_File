@@ -378,7 +378,10 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         }
         if ($this->_options['file_locking']) flock($fd, LOCK_UN);
         fclose($fd);
-        $metadata = @unserialize(rtrim($metadata,"\n"));
+        $metadata = @unserialize(rtrim($metadata,"\n"), ['allowed_classes' => false]);
+        if ($metadata === false) {
+            return false;
+        }
         if ($withData) {
             return array($metadata, $data);
         }

@@ -32,8 +32,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * @copyright  Copyright (c) 2012 Colin Mollenhour (http://colin.mollenhour.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  */
-class Cm_Cache_FileBackendTest extends Zend_Cache_CommonExtendedBackendTest {
-
+class Cm_Cache_FileBackendTest extends Zend_Cache_CommonExtendedBackendTest
+{
     protected $_instance;
     protected $_cache_dir;
 
@@ -57,8 +57,12 @@ class Cm_Cache_FileBackendTest extends Zend_Cache_CommonExtendedBackendTest {
         unset($this->_instance);
     }
 
-    public function testConstructorBadOption() { }
-    public function testConstructorCorrectCall() { }
+    public function testConstructorBadOption()
+    {
+    }
+    public function testConstructorCorrectCall()
+    {
+    }
 
     public function testGetWithANonExistingCacheIdAndANullLifeTime()
     {

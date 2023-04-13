@@ -12,7 +12,7 @@ return $config
     ->setFinder(
         PhpCsFixer\Finder::create()
             ->in([
-                'Cm/',
+                './',
                 'tests/',
             ])
             ->name('*.php')

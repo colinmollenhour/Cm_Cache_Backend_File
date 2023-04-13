@@ -34,8 +34,8 @@ if (!class_exists('\PHPUnit\Framework\TestCase') && class_exists('\PHPUnit_Frame
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  * @group      Zend_Cache
  */
-abstract class Zend_Cache_CommonBackendTest extends \PHPUnit\Framework\TestCase {
-
+abstract class Zend_Cache_CommonBackendTest extends \PHPUnit\Framework\TestCase
+{
     protected $_instance;
     protected $_className;
     protected $_root;
@@ -83,7 +83,7 @@ abstract class Zend_Cache_CommonBackendTest extends \PHPUnit\Framework\TestCase 
         }
         if (is_writeable($this->_root)) {
             return $this->_root . DIRECTORY_SEPARATOR . 'zend_cache_tmp_dir_' . $suffix;
-        } else if (getenv('TMPDIR')){
+        } elseif (getenv('TMPDIR')) {
             return getenv('TMPDIR') . DIRECTORY_SEPARATOR . 'zend_cache_tmp_dir_' . $suffix;
         } else {
             die("no writable tmpdir found");
@@ -281,5 +281,3 @@ abstract class Zend_Cache_CommonBackendTest extends \PHPUnit\Framework\TestCase 
     }
 
 }
-
-

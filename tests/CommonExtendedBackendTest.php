@@ -33,8 +33,8 @@ require_once 'CommonBackendTest.php';
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  * @group      Zend_Cache
  */
-abstract class Zend_Cache_CommonExtendedBackendTest extends Zend_Cache_CommonBackendTest {
-
+abstract class Zend_Cache_CommonExtendedBackendTest extends Zend_Cache_CommonBackendTest
+{
     private $_capabilities;
 
     public function __construct($name = null, array $data = array(), $dataName = '')
@@ -210,5 +210,3 @@ abstract class Zend_Cache_CommonExtendedBackendTest extends Zend_Cache_CommonBac
     }
 
 }
-
-

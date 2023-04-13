@@ -33,7 +33,7 @@ require_once 'CommonBackendTest.php';
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  * @group      Zend_Cache
  */
-class Zend_Cache_CommonExtendedBackendTest extends Zend_Cache_CommonBackendTest {
+abstract class Zend_Cache_CommonExtendedBackendTest extends Zend_Cache_CommonBackendTest {
 
     private $_capabilities;
 
@@ -42,9 +42,9 @@ class Zend_Cache_CommonExtendedBackendTest extends Zend_Cache_CommonBackendTest 
         parent::__construct($name);
     }
 
-    public function setUp($notag = false)
+    public function setUp(): void
     {
-        parent::setUp($notag);
+        parent::setUp();
         $this->_capabilities = $this->_instance->getCapabilities();
     }
 
@@ -58,10 +58,8 @@ class Zend_Cache_CommonExtendedBackendTest extends Zend_Cache_CommonBackendTest 
 
     public function testGetFillingPercentageOnEmptyBackend()
     {
-        $this->_instance->setDirectives(array('logging' => false)); // ???
         $this->_instance->clean(Zend_Cache::CLEANING_MODE_ALL);
         $res = $this->_instance->getFillingPercentage();
-        $this->_instance->setDirectives(array('logging' => true)); // ???
         $this->assertTrue(is_integer($res));
         $this->assertTrue($res >= 0);
         $this->assertTrue($res <= 100);

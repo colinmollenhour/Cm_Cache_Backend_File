@@ -28,9 +28,6 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-require_once 'app/Mage.php'; // Just for autoloading
-require_once 'CommonExtendedBackendTest.php';
-
 /**
  * @copyright  Copyright (c) 2012 Colin Mollenhour (http://colin.mollenhour.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
@@ -45,16 +42,16 @@ class Cm_Cache_FileBackendTest extends Zend_Cache_CommonExtendedBackendTest {
         parent::__construct('Cm_Cache_Backend_File', $data, $dataName);
     }
 
-    public function setUp($notag = false)
+    public function setUp(): void
     {
         $this->mkdir();
         $this->_instance = new Cm_Cache_Backend_File(array(
             'cache_dir' => $this->getTmpDir() . DIRECTORY_SEPARATOR,
         ));
-        parent::setUp($notag);
+        parent::setUp();
     }
 
-    public function tearDown()
+    public function tearDown(): void
     {
         parent::tearDown();
         unset($this->_instance);

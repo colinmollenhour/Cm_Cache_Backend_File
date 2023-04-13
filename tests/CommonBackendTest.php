@@ -48,11 +48,10 @@ abstract class Zend_Cache_CommonBackendTest extends \PHPUnit\Framework\TestCase 
         parent::__construct($name, $data, $dataName);
     }
 
-    public function setUp($notag = false)
+    public function setUp(): void
     {
         $this->mkdir();
-        $this->_instance->setDirectives(array('logging' => true));
-        if ($notag) {
+        if (false /*$notag*/) {
             $this->_instance->save('bar : data to cache', 'bar');
             $this->_instance->save('bar2 : data to cache', 'bar2');
             $this->_instance->save('bar3 : data to cache', 'bar3');
@@ -91,7 +90,7 @@ abstract class Zend_Cache_CommonBackendTest extends \PHPUnit\Framework\TestCase 
         }
     }
 
-    public function tearDown()
+    public function tearDown(): void
     {
         if ($this->_instance) {
             $this->_instance->clean();
@@ -117,7 +116,7 @@ abstract class Zend_Cache_CommonBackendTest extends \PHPUnit\Framework\TestCase 
 
     public function testSetDirectivesCorrectCall()
     {
-        $this->_instance->setDirectives(array('lifetime' => 3600, 'logging' => true));
+        $this->_instance->setDirectives(array('lifetime' => 3600));
     }
 
     public function testSetDirectivesBadArgument()

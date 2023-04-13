@@ -1,2 +1,4 @@
 .basedir
 .idea
+vendor
+composer.lock

@@ -1,9 +1,7 @@
-[![Build Status](https://travis-ci.org/colinmollenhour/Cm_Cache_Backend_File.svg?branch=master)](https://travis-ci.org/colinmollenhour/Cm_Cache_Backend_File)
-
 Cm_Cache_Backend_File
 =====================
 
-The stock Zend_Cache_Backend_File backend has extremely poor performance for
+The stock `Zend_Cache_Backend_File` backend has extremely poor performance for
 cleaning by tags making it become unusable as the number of cached items
 increases. This backend makes many changes resulting in a huge performance boost,
 especially for tag cleaning.
@@ -99,6 +97,25 @@ require_once 'app/Mage.php';
 Mage::app()->getCache()->getBackend()->clean(Zend_Cache::CLEANING_MODE_OLD);
 // uncomment this for Magento Enterprise Edition
 // Enterprise_PageCache_Model_Cache::getCacheInstance()->getFrontend()->getBackend()->clean(Zend_Cache::CLEANING_MODE_OLD);
+```
+
+Development
+-----------
+
+Please feel free to send Pull Requests to give back your improvements to the community!
+
+You can run the unit tests locally with just Docker installed using a simple alias:
+
+```shell
+alias cm-cache-backend-file='docker run --rm -it -u $(id -u):$(id -g) -v ${COMPOSER_HOME:-$HOME/.composer}:/tmp -v $(pwd):/app --workdir /app cm-cache-backend-file'
+docker build . -t cm-cache-backend-file
+```
+
+Then start a Redis server, install Composer dependencies and run tests like so: 
+```shell
+  cm-cache-backend-file composer install
+  cm-cache-backend-file composer run-script test
+  cm-cache-backend-file composer run-script php-cs-fixer -- --dry-run
 ```
 
 Special Thanks

@@ -28,11 +28,13 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+require_once 'CommonExtendedBackend.php';
+
 /**
  * @copyright  Copyright (c) 2012 Colin Mollenhour (http://colin.mollenhour.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  */
-class Cm_Cache_FileBackendTest extends Zend_Cache_CommonExtendedBackendTest
+class FileBackendTest extends \CommonExtendedBackend
 {
     protected $_instance;
     protected $_cache_dir;
@@ -59,9 +61,11 @@ class Cm_Cache_FileBackendTest extends Zend_Cache_CommonExtendedBackendTest
 
     public function testConstructorBadOption()
     {
+        $this->markTestSkipped();
     }
     public function testConstructorCorrectCall()
     {
+        $this->markTestSkipped();
     }
 
     public function testGetWithANonExistingCacheIdAndANullLifeTime()
@@ -92,4 +96,11 @@ class Cm_Cache_FileBackendTest extends Zend_Cache_CommonExtendedBackendTest
         $this->assertFalse($res);
     }
 
+    public function testSaveWithNullLifeTime2()
+    {
+        $res = $this->_instance->save('data to cache', 'foo', array('tag1', 'tag2'), null);
+        $this->assertTrue($res);
+        $metadatas = $this->_instance->getMetadatas('foo');
+        $this->assertGreaterThan(time() + 99999999, $metadatas['expire']);
+    }
 }

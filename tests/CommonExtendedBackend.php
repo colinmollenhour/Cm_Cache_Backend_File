@@ -20,10 +20,7 @@
  * @version    $Id: CommonExtendedBackendTest.php 23775 2011-03-01 17:25:24Z ralph $
  */
 
-/**
- * @see Zend_Cache_CommonBackendTest
- */
-require_once 'CommonBackendTest.php';
+require_once 'CommonBackend.php';
 
 /**
  * @category   Zend
@@ -33,7 +30,7 @@ require_once 'CommonBackendTest.php';
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  * @group      Zend_Cache
  */
-abstract class Zend_Cache_CommonExtendedBackendTest extends Zend_Cache_CommonBackendTest
+abstract class CommonExtendedBackend extends \CommonBackend
 {
     private $_capabilities;
 

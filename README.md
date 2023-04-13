@@ -26,8 +26,8 @@ Test it for yourself with the [Magento Cache Benchmark](https://github.com/colin
 Installation
 ------------
 
-1. Clone module with [modman](https://github.com/colinmollenhour/modman)
-2. Edit `app/etc/local.xml` changing `global/cache/backend` to `Cm_Cache_Backend_File`
+1. Install with Composer: `composer require colinmollenhour/cache-backend-file`
+2. Edit `app/etc/local.xml` changing `global/cache/backend` to `Cm_Cache_Backend_File` (Magento 1 / OpenMage)
 3. Delete all contents of the cache directory
 
 Example Configuration
@@ -111,7 +111,7 @@ alias cm-cache-backend-file='docker run --rm -it -u $(id -u):$(id -g) -v ${COMPO
 docker build . -t cm-cache-backend-file
 ```
 
-Then start a Redis server, install Composer dependencies and run tests like so: 
+Then, install Composer dependencies and run tests like so: 
 ```shell
   cm-cache-backend-file composer install
   cm-cache-backend-file composer run-script test

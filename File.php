@@ -469,6 +469,14 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         if (!is_dir($dir)) {
             return false;
         }
+        if ($mode == 'all' && $dir === $this->_options['cache_dir']) {
+            $glob = glob($this->_tagFile('*'));
+            if ($glob !== false) {
+                foreach ($glob as $tagFile) {
+                    @unlink($tagFile);
+                }
+            }
+        }
         $result = true;
         $glob = @glob($dir . $this->_options['file_name_prefix'] . '--*');
         if ($glob === false) {
@@ -509,11 +517,6 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
                     // if mode=='all', we try to drop the structure too
                     @rmdir($file);
                 }
-            }
-        }
-        if ($mode == 'all') {
-            foreach (glob($this->_tagFile('*')) as $tagFile) {
-                @unlink($tagFile);
             }
         }
         return $result;

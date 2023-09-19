@@ -42,6 +42,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         'cache_dir' => null,               // Path to cache files
         'file_name_prefix' => 'cm',        // Prefix for cache directories created
         'file_locking' => true,            // Best to keep enabled
+        'global_locking' => true,          // Best to keep enabled
         'read_control' => false,           // Use a checksum to detect corrupt data
         'read_control_type' => 'crc32',    // If read_control is enabled, which checksum algorithm to use
         'hashed_directory_level' => 2,     // How many characters should be used to create sub-directories
@@ -52,6 +53,11 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
 
     /** @var bool */
     protected $_isTagDirChecked;
+
+    /**
+     * @var null|resource
+     */
+    private $_globalLock;
 
     /**
      * @param array $options
@@ -141,27 +147,32 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      */
     public function load($id, $doNotTestCacheValidity = false)
     {
-        $file = $this->_file($id);
-        $cache = $this->_getCache($file, true);
-        if (! $cache) {
-            return false;
-        }
-        list($metadatas, $data) = $cache;
-        if (! $doNotTestCacheValidity && (time() > $metadatas['expire'])) {
-            // ?? $this->remove($id);
-            return false;
-        }
-        if ($this->_options['read_control']) {
-            $hashData = $this->_hash($data, $this->_options['read_control_type']);
-            $hashControl = $metadatas['hash'];
-            if ($hashData != $hashControl) {
-                // Problem detected by the read control !
-                $this->_log('Zend_Cache_Backend_File::load() / read_control : stored hash and computed hash do not match');
-                $this->remove($id);
+        $this->_getGlobalLock(true);
+        try {
+            $file = $this->_file($id);
+            $cache = $this->_getCache($file, true);
+            if (! $cache) {
                 return false;
             }
+            list($metadatas, $data) = $cache;
+            if (! $doNotTestCacheValidity && (time() > $metadatas['expire'])) {
+                // ?? $this->remove($id);
+                return false;
+            }
+            if ($this->_options['read_control']) {
+                $hashData = $this->_hash($data, $this->_options['read_control_type']);
+                $hashControl = $metadatas['hash'];
+                if ($hashData != $hashControl) {
+                    // Problem detected by the read control !
+                    $this->_log('Zend_Cache_Backend_File::load() / read_control : stored hash and computed hash do not match');
+                    $this->remove($id);
+                    return false;
+                }
+            }
+            return $data;
+        } finally {
+            $this->_releaseGlobalLock();
         }
-        return $data;
     }
 
     /**
@@ -178,31 +189,36 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      */
     public function save($data, $id, $tags = array(), $specificLifetime = false)
     {
-        $file = $this->_file($id);
-        $path = $this->_path($id);
-        if ($this->_options['hashed_directory_level'] > 0) {
-            if (!is_writable($path)) {
-                // maybe, we just have to build the directory structure
-                $this->_recursiveMkdirAndChmod($id);
+        $this->_getGlobalLock(true);
+        try {
+            $file = $this->_file($id);
+            $path = $this->_path($id);
+            if ($this->_options['hashed_directory_level'] > 0) {
+                if (!is_writable($path)) {
+                    // maybe, we just have to build the directory structure
+                    $this->_recursiveMkdirAndChmod($id);
+                }
+                if (!is_writable($path)) {
+                    return false;
+                }
             }
-            if (!is_writable($path)) {
-                return false;
+            if ($this->_options['read_control']) {
+                $hash = $this->_hash($data, $this->_options['read_control_type']);
+            } else {
+                $hash = '';
             }
+            $metadatas = array(
+                'hash' => $hash,
+                'mtime' => time(),
+                'expire' => $this->_expireTime($this->getLifetime($specificLifetime)),
+                'tags' => implode(',', $tags),
+            );
+            $res = $this->_filePutContents($file, serialize($metadatas)."\n".$data);
+            $res = $res && $this->_updateIdsTags(array($id), $tags, 'merge');
+            return $res;
+        } finally {
+            $this->_releaseGlobalLock();
         }
-        if ($this->_options['read_control']) {
-            $hash = $this->_hash($data, $this->_options['read_control_type']);
-        } else {
-            $hash = '';
-        }
-        $metadatas = array(
-            'hash' => $hash,
-            'mtime' => time(),
-            'expire' => $this->_expireTime($this->getLifetime($specificLifetime)),
-            'tags' => implode(',', $tags),
-        );
-        $res = $this->_filePutContents($file, serialize($metadatas)."\n".$data);
-        $res = $res && $this->_updateIdsTags(array($id), $tags, 'merge');
-        return $res;
     }
 
     /**
@@ -213,14 +229,19 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      */
     public function remove($id)
     {
-        $file = $this->_file($id);
-        $metadatas = $this->_getCache($file, false);
-        if ($metadatas) {
-            $boolRemove   = $this->_remove($file);
-            $boolTags     = $this->_updateIdsTags(array($id), explode(',', $metadatas['tags']), 'diff');
-            return $boolRemove && $boolTags;
+        $this->_getGlobalLock(true);
+        try {
+            $file = $this->_file($id);
+            $metadatas = $this->_getCache($file, false);
+            if ($metadatas) {
+                $boolRemove   = $this->_remove($file);
+                $boolTags     = $this->_updateIdsTags(array($id), explode(',', $metadatas['tags']), 'diff');
+                return $boolRemove && $boolTags;
+            }
+            return false;
+        } finally {
+            $this->_releaseGlobalLock();
         }
-        return false;
     }
 
     /**
@@ -244,12 +265,17 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
     {
         // We use this protected method to hide the recursive stuff
         clearstatcache();
-        switch($mode) {
-            case Zend_Cache::CLEANING_MODE_ALL:
-            case Zend_Cache::CLEANING_MODE_OLD:
-                return $this->_clean($this->_options['cache_dir'], $mode);
-            default:
-                return $this->_cleanNew($mode, $tags);
+        $this->_getGlobalLock(false);
+        try {
+            switch($mode) {
+                case Zend_Cache::CLEANING_MODE_ALL:
+                case Zend_Cache::CLEANING_MODE_OLD:
+                    return $this->_clean($this->_options['cache_dir'], $mode);
+                default:
+                    return $this->_cleanNew($mode, $tags);
+            }
+        } finally {
+            $this->_releaseGlobalLock();
         }
     }
 
@@ -260,13 +286,18 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      */
     public function getTags()
     {
-        $prefix = $this->_tagFile('');
-        $prefixLen = strlen($prefix);
-        $tags = array();
-        foreach (@glob($prefix . '*') as $tagFile) {
-            $tags[] = substr($tagFile, $prefixLen);
+        $this->_getGlobalLock(true);
+        try {
+            $prefix = $this->_tagFile('');
+            $prefixLen = strlen($prefix);
+            $tags = array();
+            foreach (@glob($prefix . '*') as $tagFile) {
+                $tags[] = substr($tagFile, $prefixLen);
+            }
+            return $tags;
+        } finally {
+            $this->_releaseGlobalLock();
         }
-        return $tags;
     }
 
     /**
@@ -279,7 +310,12 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      */
     public function getIdsMatchingTags($tags = array())
     {
-        return $this->_getIdsByTags(Zend_Cache::CLEANING_MODE_MATCHING_TAG, $tags, false);
+        $this->_getGlobalLock(true);
+        try {
+            return $this->_getIdsByTags(Zend_Cache::CLEANING_MODE_MATCHING_TAG, $tags, false);
+        } finally {
+            $this->_releaseGlobalLock();
+        }
     }
 
     /**
@@ -292,7 +328,12 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      */
     public function getIdsNotMatchingTags($tags = array())
     {
-        return $this->_getIdsByTags(Zend_Cache::CLEANING_MODE_NOT_MATCHING_TAG, $tags, false);
+        $this->_getGlobalLock(true);
+        try {
+            return $this->_getIdsByTags(Zend_Cache::CLEANING_MODE_NOT_MATCHING_TAG, $tags, false);
+        } finally {
+            $this->_releaseGlobalLock();
+        }
     }
 
     /**
@@ -305,7 +346,12 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      */
     public function getIdsMatchingAnyTags($tags = array())
     {
-        return $this->_getIdsByTags(Zend_Cache::CLEANING_MODE_MATCHING_ANY_TAG, $tags, false);
+        $this->_getGlobalLock(true);
+        try {
+            return $this->_getIdsByTags(Zend_Cache::CLEANING_MODE_MATCHING_ANY_TAG, $tags, false);
+        } finally {
+            $this->_releaseGlobalLock();
+        }
     }
 
     /**
@@ -321,11 +367,16 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      */
     public function getMetadatas($id)
     {
-        $metadatas = $this->_getCache($this->_file($id), false);
-        if ($metadatas) {
-            $metadatas['tags'] = explode(',', $metadatas['tags']);
+        $this->_getGlobalLock(true);
+        try {
+            $metadatas = $this->_getCache($this->_file($id), false);
+            if ($metadatas) {
+                $metadatas['tags'] = explode(',', $metadatas['tags']);
+            }
+            return $metadatas;
+        } finally {
+            $this->_releaseGlobalLock();
         }
-        return $metadatas;
     }
 
     /**
@@ -337,22 +388,27 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
      */
     public function touch($id, $extraLifetime)
     {
-        $file = $this->_file($id);
-        $cache = $this->_getCache($file, true);
-        if (!$cache) {
-            return false;
+        $this->_getGlobalLock(true);
+        try {
+            $file = $this->_file($id);
+            $cache = $this->_getCache($file, true);
+            if (!$cache) {
+                return false;
+            }
+            list($metadatas, $data) = $cache;
+            if (time() > $metadatas['expire']) {
+                return false;
+            }
+            $newMetadatas = array(
+                'hash' => $metadatas['hash'],
+                'mtime' => time(),
+                'expire' => $metadatas['expire'] + $extraLifetime,
+                'tags' => $metadatas['tags']
+            );
+            return !! $this->_filePutContents($file, serialize($newMetadatas)."\n".$data);
+        } finally {
+            $this->_releaseGlobalLock();
         }
-        list($metadatas, $data) = $cache;
-        if (time() > $metadatas['expire']) {
-            return false;
-        }
-        $newMetadatas = array(
-            'hash' => $metadatas['hash'],
-            'mtime' => time(),
-            'expire' => $metadatas['expire'] + $extraLifetime,
-            'tags' => $metadatas['tags']
-        );
-        return !! $this->_filePutContents($file, serialize($newMetadatas)."\n".$data);
     }
 
     /**
@@ -755,6 +811,24 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         return true;
     }
 
+    protected function _getGlobalLock($shared)
+    {
+        if (!$this->_globalLock) {
+            $this->_globalLock = @fopen(rtrim($this->_options['cache_dir'], DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.'global.lock', 'w');
+            if (!$this->_globalLock) { // Errors are not fatal
+                return;
+            }
+        }
+        flock($this->_globalLock, $shared ? LOCK_SH : LOCK_EX);
+    }
+
+    protected function _releaseGlobalLock()
+    {
+        if ($this->_globalLock) {
+            @flock($this->_globalLock, LOCK_UN);
+        }
+    }
+
     /**
      * For unit testing only
      * @param $id
@@ -765,4 +839,12 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         $this->touch($id, 1 - $metadata['expire']);
     }
 
+    public function __destruct()
+    {
+        if ($this->_globalLock) {
+            $this->_releaseGlobalLock();
+            @fclose($this->_globalLock);
+            $this->_globalLock = null;
+        }
+    }
 }

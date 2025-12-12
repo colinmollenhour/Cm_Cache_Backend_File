@@ -42,7 +42,7 @@ class Cm_Cache_Backend_File extends Zend_Cache_Backend_File
         'cache_dir' => null,               // Path to cache files
         'file_name_prefix' => 'cm',        // Prefix for cache directories created
         'file_locking' => true,            // Best to keep enabled
-        'global_locking' => true,          // Best to keep enabled
+        'global_locking' => false,          // Disabled by default, enable to eliminate possible race conditions
         'read_control' => false,           // Use a checksum to detect corrupt data
         'read_control_type' => 'crc32',    // If read_control is enabled, which checksum algorithm to use
         'hashed_directory_level' => 2,     // How many characters should be used to create sub-directories

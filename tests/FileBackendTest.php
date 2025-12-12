@@ -94,6 +94,7 @@ class FileBackendTest extends \CommonExtendedBackend
         $this->_instance->setOption('cache_dir', '/foo/bar/lfjlqsdjfklsqd/');
         $res = $this->_instance->save('data to cache', 'foo', array('tag1', 'tag2'));
         $this->assertFalse($res);
+        $this->assertEquals('mkdir(): No such file or directory', error_get_last()['message']);
     }
 
     public function testSaveWithNullLifeTime2()
